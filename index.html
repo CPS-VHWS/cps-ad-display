@@ -110,8 +110,7 @@
   function scheduleHourlyReload() {
     const now = new Date();
     const msToNextHour = (3600 - now.getMinutes() * 60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    const jitter = Math.random() * 5 * 60 * 1000; // 0–5 phút ngẫu nhiên — tránh 1000 máy reload cùng lúc
-    setTimeout(() => location.reload(true), msToNextHour + jitter);
+    setTimeout(() => location.reload(true), msToNextHour);
   }
   function enterFS() {
     const el = document.documentElement;
