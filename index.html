@@ -8,7 +8,7 @@
   <!-- PWA / Add to Home Screen -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="AdDisplay">
+  <meta name="apple-mobile-web-app-title" content="AdDisplay Landscape">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -134,7 +134,7 @@
   // ─────────────────────────────────────────────
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
-      videoId: PLAYLIST[0].id,
+      videoId: PLAYLIST_LANDSCAPE[0].id,
       playerVars: {
         autoplay     : 1,
         mute         : 1,
@@ -186,9 +186,9 @@
   //  Video control
   // ─────────────────────────────────────────────
   function startVideo(index) {
-    if (!isReady || !player || !PLAYLIST.length) return;
-    currentIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
-    player.loadVideoById({ videoId: PLAYLIST[currentIndex].id });
+    if (!isReady || !player || !PLAYLIST_LANDSCAPE.length) return;
+    currentIndex = ((index % PLAYLIST_LANDSCAPE.length) + PLAYLIST_LANDSCAPE.length) % PLAYLIST_LANDSCAPE.length;
+    player.loadVideoById({ videoId: PLAYLIST_LANDSCAPE[currentIndex].id });
     player.mute();
   }
 
@@ -261,8 +261,8 @@
       const m    = Math.floor(ms / 60000);
       const s    = Math.floor((ms % 60000) / 1000);
       const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const vid  = PLAYLIST[currentIndex]
-                 ? (PLAYLIST[currentIndex].label || `Video ${currentIndex + 1}`)
+      const vid  = PLAYLIST_LANDSCAPE[currentIndex]
+                 ? (PLAYLIST_LANDSCAPE[currentIndex].label || `Video ${currentIndex + 1}`)
                  : '—';
       el.textContent = `${time}  |  ${vid}  |  sync ${m}:${String(s).padStart(2,'0')}`;
     }, 1000);
