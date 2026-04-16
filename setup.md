@@ -61,9 +61,9 @@
 
 | | URL |
 |---|---|
-| Màn hình ngang | `https://cps-vhws.github.io/cps-ad-display/` |
-| Màn hình dọc | `https://cps-vhws.github.io/cps-ad-display/vertical/` |
-| Admin Dashboard | `https://cps-vhws.github.io/cps-ad-display/admin.html` |
+| Màn hình ngang | `https://cps-ad-display.pages.dev/` |
+| Màn hình dọc | `https://cps-ad-display.pages.dev/vertical/` |
+| Admin Dashboard | `https://cps-ad-display.pages.dev/admin.html` |
 | GitHub repo | `https://github.com/CPS-VHWS/cps-ad-display` |
 
 ---
@@ -112,7 +112,7 @@ Token dùng để Admin Dashboard có quyền ghi `config.js` lên GitHub.
 
 ### 3.2 Cài đặt Admin Dashboard lần đầu
 
-1. Mở `https://cps-vhws.github.io/cps-ad-display/admin.html`
+1. Mở `https://cps-ad-display.pages.dev/admin.html`
 2. Nhập PIN: **`0526`**
 3. Dán GitHub Token vào ô **Personal Access Token**
 4. Nhấn **↓ Tải playlist từ GitHub** để load playlist hiện tại
@@ -208,8 +208,8 @@ Mỗi máy chỉ cần làm **một lần**. Sau đó mọi cập nhật playlis
 ### iPad / iPhone (Safari PWA)
 
 1. Mở **Safari** (không dùng Chrome/Firefox) → vào URL tương ứng:
-   - iPad ngang: `https://cps-vhws.github.io/cps-ad-display/`
-   - iPad đứng / iPhone: `https://cps-vhws.github.io/cps-ad-display/vertical/`
+   - iPad ngang: `https://cps-ad-display.pages.dev/`
+   - iPad đứng / iPhone: `https://cps-ad-display.pages.dev/vertical/`
 2. Nhấn nút **Share** (hình vuông + mũi tên lên, thanh dưới màn hình)
 3. Chọn **"Add to Home Screen"** → đặt tên → **Add**
 4. Mở app từ màn hình chính → chạy standalone (không có thanh địa chỉ), tự fullscreen
