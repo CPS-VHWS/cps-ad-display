@@ -58,7 +58,7 @@
   function onPlayerReady() {
     isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
-    startVideo(0); scheduleSyncTimer(); scheduleDaily8AMReload(); startStatusTicker(); setupIdleFullscreen();
+    startVideo(0); scheduleSyncTimer(); scheduleHourlyReload(); startStatusTicker(); setupIdleFullscreen();
   }
   function onPlayerStateChange(e) { if (e.data === 0) playNext(); }
   function onPlayerError(e) { console.warn('[AdDisplay:Portrait] Error:', e.data); setTimeout(playNext, APP_CONFIG.errorSkipDelay); }
@@ -106,11 +106,11 @@
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => { startVideo(0); scheduleSyncTimer(); }, msToNextSyncPoint());
   }
-  function scheduleDaily8AMReload() {
-    const now = new Date(), next = new Date(now);
-    next.setHours(APP_CONFIG.dailyReloadHour, APP_CONFIG.dailyReloadMinute, 0, 0);
-    if (next <= now) next.setDate(next.getDate() + 1);
-    setTimeout(() => location.reload(true), next - now);
+  function scheduleHourlyReload() {
+    const now = new Date();
+    const msToNextHour = (3600 - now.getMinutes() * 60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    const jitter = Math.random() * 5 * 60 * 1000; // 0–5 phút ngẫu nhiên — tránh 1000 máy reload cùng lúc
+    setTimeout(() => location.reload(true), msToNextHour + jitter);
   }
 
   // ── Fullscreen ─────────────────────────────────────────────────
