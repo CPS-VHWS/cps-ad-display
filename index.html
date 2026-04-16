@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+
+  <!-- PWA / Add to Home Screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AdDisplay">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <title>Ad Display</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      cursor: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── Player wrapper ── */
+    #player-wrap {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /*
+      Object-fit: cover effect cho YouTube iframe.
+      Technique: đặt iframe lớn hơn viewport, căn giữa.
+      min-width: 177.78vh  → đủ rộng cho màn hình portrait cao
+      min-height: 56.25vw  → đủ cao cho màn hình landscape rộng
+    */
+    #yt-player {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vw;
+      height: 56.25vw;   /* 100 * 9/16 */
+      min-width: 177.78vh; /* 100 * 16/9 */
+      min-height: 100vh;
+      pointer-events: none;
+    }
+
+    /* iframe được inject bởi YouTube API */
+    #yt-player iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: none;
+      pointer-events: none;
+    }
+
+    /* ── Overlay: chặn tương tác với player, bắt click fullscreen ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      cursor: none;
+      background: transparent;
+    }
+
+    /* ── Status bar ── */
+    #status {
+      position: fixed;
+      bottom: 12px; right: 14px;
+      color: rgba(255,255,255,0.25);
+      font: 11px/1.4 'SF Mono', 'Consolas', monospace;
+      letter-spacing: 0.03em;
+      z-index: 200;
+      pointer-events: none;
+      text-align: right;
+    }
+
+    /* ── Splash / loading ── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      transition: opacity 0.6s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50%       { opacity: 1;   transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash"><div id="splash-dot"></div></div>
+
+  <div id="player-wrap">
+    <div id="yt-player"></div>
+  </div>
+
+  <div id="overlay"></div>
+
+  <div id="status" id="status"></div>
+
+  <!-- ── Config ── -->
+  <script src="config.js"></script>
+
+  <script>
+  // ─────────────────────────────────────────────
+  //  State
+  // ─────────────────────────────────────────────
+  let player        = null;
+  let currentIndex  = 0;
+  let isReady       = false;
+  let syncTimer     = null;
+  let statusTimer   = null;
+
+  // ─────────────────────────────────────────────
+  //  YouTube IFrame API bootstrap
+  // ─────────────────────────────────────────────
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('yt-player', {
+      videoId: PLAYLIST[0].id,
+      playerVars: {
+        autoplay     : 1,
+        mute         : 1,
+        controls     : 0,
+        disablekb    : 1,
+        fs           : 0,
+        iv_load_policy: 3,
+        modestbranding: 1,
+        rel          : 0,
+        showinfo     : 0,
+        playsinline  : 1,  // iOS: không mở fullscreen native
+        enablejsapi  : 1,
+      },
+      events: {
+        onReady      : onPlayerReady,
+        onStateChange: onPlayerStateChange,
+        onError      : onPlayerError,
+      },
+    });
+  };
+
+  function onPlayerReady() {
+    isReady = true;
+    player.mute();
+
+    // Ẩn splash sau khi player sẵn sàng
+    setTimeout(() => {
+      const splash = document.getElementById('splash');
+      if (splash) splash.classList.add('hidden');
+    }, 800);
+
+    startVideo(currentIndex);
+    scheduleSyncTimer();
+    scheduleDaily8AMReload();
+    startStatusTicker();
+  }
+
+  function onPlayerStateChange(e) {
+    // YT.PlayerState.ENDED = 0
+    if (e.data === 0) playNext();
+  }
+
+  function onPlayerError(e) {
+    console.warn('[AdDisplay] Player error code:', e.data, '→ skip to next');
+    setTimeout(playNext, APP_CONFIG.errorSkipDelay);
+  }
+
+  // ─────────────────────────────────────────────
+  //  Video control
+  // ─────────────────────────────────────────────
+  function startVideo(index) {
+    if (!isReady || !player || !PLAYLIST.length) return;
+    currentIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
+    player.loadVideoById({ videoId: PLAYLIST[currentIndex].id });
+    player.mute();
+  }
+
+  function playNext() {
+    startVideo(currentIndex + 1);
+  }
+
+  // ─────────────────────────────────────────────
+  //  5-minute clock sync
+  // ─────────────────────────────────────────────
+  function msToNextSyncPoint() {
+    const now      = new Date();
+    const interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
+    const elapsed  =
+      (now.getMinutes() * 60000) +
+      (now.getSeconds() * 1000)  +
+       now.getMilliseconds();
+    const remainder = elapsed % interval;
+    return remainder === 0 ? interval : (interval - remainder);
+  }
+
+  function scheduleSyncTimer() {
+    clearTimeout(syncTimer);
+    const delay = msToNextSyncPoint();
+    syncTimer = setTimeout(() => {
+      console.log('[AdDisplay] Sync point — restarting from video 1');
+      startVideo(0);
+      scheduleSyncTimer();   // lên lịch mốc tiếp theo
+    }, delay);
+  }
+
+  // ─────────────────────────────────────────────
+  //  Daily 8 AM page reload
+  // ─────────────────────────────────────────────
+  function scheduleDaily8AMReload() {
+    const now  = new Date();
+    const next = new Date(now);
+    next.setHours(APP_CONFIG.dailyReloadHour, APP_CONFIG.dailyReloadMinute, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);  // đã qua → ngày mai
+    const delay = next - now;
+    setTimeout(() => location.reload(true), delay);
+    console.log('[AdDisplay] Daily reload scheduled at', next.toLocaleString('vi-VN'));
+  }
+
+  // ─────────────────────────────────────────────
+  //  Fullscreen request (overlay click / touch)
+  // ─────────────────────────────────────────────
+  function requestFS() {
+    const el = document.documentElement;
+    const fn = el.requestFullscreen
+            || el.webkitRequestFullscreen
+            || el.mozRequestFullScreen
+            || el.msRequestFullscreen;
+    if (fn) fn.call(el).catch(() => {});
+  }
+
+  const overlay = document.getElementById('overlay');
+  overlay.addEventListener('click',      requestFS);
+  overlay.addEventListener('touchstart', requestFS, { passive: true });
+
+  // ─────────────────────────────────────────────
+  //  Status bar ticker
+  // ─────────────────────────────────────────────
+  function startStatusTicker() {
+    if (!APP_CONFIG.showStatusBar) return;
+    const el = document.getElementById('status');
+    statusTimer = setInterval(() => {
+      const now  = new Date();
+      const ms   = msToNextSyncPoint();
+      const m    = Math.floor(ms / 60000);
+      const s    = Math.floor((ms % 60000) / 1000);
+      const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const vid  = PLAYLIST[currentIndex]
+                 ? (PLAYLIST[currentIndex].label || `Video ${currentIndex + 1}`)
+                 : '—';
+      el.textContent = `${time}  |  ${vid}  |  sync ${m}:${String(s).padStart(2,'0')}`;
+    }, 1000);
+  }
+
+  // ─────────────────────────────────────────────
+  //  Service Worker registration (PWA)
+  // ─────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.warn('[AdDisplay] SW registration failed:', err);
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  Load YouTube IFrame API
+  // ─────────────────────────────────────────────
+  (function loadYTApi() {
+    const s = document.createElement('script');
+    s.src   = 'https://www.youtube.com/iframe_api';
+    s.async = true;
+    document.head.appendChild(s);
+  })();
+  </script>
+
+</body>
+</html>
