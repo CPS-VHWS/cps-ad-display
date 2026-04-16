@@ -14,109 +14,98 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width:100%; height:100%; background:#000; overflow:hidden; cursor:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-
     #player-wrap { position:fixed; inset:0; overflow:hidden; background:#000; }
 
-    /* Cover effect cho video DỌC (9:16) */
+    /* Cover — portrait (9:16) */
     #yt-player, #gd-player {
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      width:56.25vh; height:100vh;
-      min-width:100vw; min-height:177.78vw;
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:56.25vh; height:100vh; min-width:100vw; min-height:177.78vw;
       pointer-events:none; border:none;
     }
     #yt-player iframe { width:100%!important; height:100%!important; border:none; pointer-events:none; }
     #gd-player { display:none; }
+    #img-player { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; pointer-events:none; }
 
     #overlay { position:fixed; inset:0; z-index:100; cursor:none; background:transparent; }
-
-    #status { position:fixed; bottom:12px; right:14px; color:rgba(255,255,255,0.25); font:11px/1.4 'SF Mono','Consolas',monospace; letter-spacing:0.03em; z-index:200; pointer-events:none; text-align:right; }
-
+    #status { position:fixed; bottom:12px; right:14px; color:rgba(255,255,255,0.25); font:11px/1.4 'SF Mono','Consolas',monospace; z-index:200; pointer-events:none; text-align:right; }
     #splash { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:300; transition:opacity 0.6s ease; }
     #splash.hidden { opacity:0; pointer-events:none; }
     #splash-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); animation:pulse 1.2s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
+    @keyframes pulse { 0%,100%{opacity:.2;transform:scale(.8)} 50%{opacity:1;transform:scale(1.2)} }
   </style>
 </head>
 <body>
-
   <div id="splash"><div id="splash-dot"></div></div>
-
   <div id="player-wrap">
     <div id="yt-player"></div>
     <iframe id="gd-player" allow="autoplay" src="about:blank"></iframe>
+    <img id="img-player" src="" alt="">
   </div>
-
   <div id="overlay"></div>
   <div id="status"></div>
-
   <script src="../config.js"></script>
   <script>
   const PLAYLIST   = PLAYLIST_PORTRAIT;
-  let player       = null;
-  let currentIndex = 0;
-  let isReady      = false;
-  let syncTimer    = null;
-  let gdTimer      = null;
+  let player = null, currentIndex = 0, isReady = false, syncTimer = null, autoTimer = null;
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
-      playerVars: { autoplay:1, mute:1, controls:0, disablekb:1, fs:0, iv_load_policy:3, modestbranding:1, rel:0, showinfo:0, playsinline:1, enablejsapi:1 },
+      playerVars: { autoplay:1,mute:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,modestbranding:1,rel:0,showinfo:0,playsinline:1,enablejsapi:1 },
       events: { onReady:onPlayerReady, onStateChange:onPlayerStateChange, onError:onPlayerError },
     });
   };
 
   function onPlayerReady() {
-    isReady = true;
-    player.mute();
+    isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
-    startVideo(0);
-    scheduleSyncTimer();
-    scheduleDaily8AMReload();
-    startStatusTicker();
+    startVideo(0); scheduleSyncTimer(); scheduleDaily8AMReload(); startStatusTicker(); setupIdleFullscreen();
   }
-
   function onPlayerStateChange(e) { if (e.data === 0) playNext(); }
   function onPlayerError(e) { console.warn('[AdDisplay:Portrait] Error:', e.data); setTimeout(playNext, APP_CONFIG.errorSkipDelay); }
 
   function startVideo(index) {
     if (!PLAYLIST.length) return;
     currentIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
-    const video  = PLAYLIST[currentIndex];
-    clearTimeout(gdTimer);
+    const v = PLAYLIST[currentIndex];
+    clearTimeout(autoTimer);
 
-    if (video.type === 'gdrive') {
+    document.getElementById('yt-player').style.display  = 'none';
+    document.getElementById('gd-player').style.display  = 'none';
+    document.getElementById('img-player').style.display = 'none';
+    document.getElementById('gd-player').src = 'about:blank';
+
+    if (v.type === 'image') {
+      const el = document.getElementById('img-player');
+      el.style.display = 'block';
+      el.src = v.id.startsWith('http') ? v.id : `https://drive.google.com/uc?id=${v.id}&export=view`;
+      autoTimer = setTimeout(playNext, (v.duration || 5) * 1000);
+
+    } else if (v.type === 'gdrive') {
       if (player && isReady) { try { player.stopVideo(); } catch(e){} }
-      document.getElementById('yt-player').style.display = 'none';
       const gd = document.getElementById('gd-player');
       gd.style.display = 'block';
-      gd.src = `https://drive.google.com/file/d/${video.id}/preview?rm=minimal`;
-      if (video.duration) gdTimer = setTimeout(playNext, video.duration * 1000);
+      gd.src = `https://drive.google.com/file/d/${v.id}/preview?rm=minimal`;
+      if (v.duration) autoTimer = setTimeout(playNext, v.duration * 1000);
+
     } else {
-      document.getElementById('gd-player').style.display = 'none';
-      document.getElementById('gd-player').src = 'about:blank';
       document.getElementById('yt-player').style.display = 'block';
       if (!isReady || !player) return;
-      player.loadVideoById({ videoId: video.id });
-      player.mute();
+      player.loadVideoById({ videoId: v.id }); player.mute();
     }
   }
 
   function playNext() { startVideo(currentIndex + 1); }
 
   function msToNextSyncPoint() {
-    const now = new Date();
-    const interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
-    const elapsed = (now.getMinutes()*60000) + (now.getSeconds()*1000) + now.getMilliseconds();
+    const now = new Date(), interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
+    const elapsed = now.getMinutes()*60000 + now.getSeconds()*1000 + now.getMilliseconds();
     const rem = elapsed % interval;
-    return rem === 0 ? interval : (interval - rem);
+    return rem === 0 ? interval : interval - rem;
   }
-
   function scheduleSyncTimer() {
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => { startVideo(0); scheduleSyncTimer(); }, msToNextSyncPoint());
   }
-
   function scheduleDaily8AMReload() {
     const now = new Date(), next = new Date(now);
     next.setHours(APP_CONFIG.dailyReloadHour, APP_CONFIG.dailyReloadMinute, 0, 0);
@@ -124,24 +113,36 @@
     setTimeout(() => location.reload(true), next - now);
   }
 
+  // ── Fullscreen ─────────────────────────────────────────────────
   function requestFS() {
     const el = document.documentElement;
-    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (fn) fn.call(el).catch(() => {});
+    const fn = el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+    if (fn) fn.call(el).catch(()=>{});
   }
-  const overlay = document.getElementById('overlay');
-  overlay.addEventListener('click', requestFS);
-  overlay.addEventListener('touchstart', requestFS, { passive: true });
+  document.getElementById('overlay').addEventListener('click', requestFS);
+  document.getElementById('overlay').addEventListener('touchstart', requestFS, { passive:true });
+
+  // ── Idle → tự fullscreen sau 2 phút không tương tác ──────────
+  function setupIdleFullscreen() {
+    let idleTimer;
+    const IDLE_MS = 2 * 60 * 1000;
+    function reset() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { if (!document.fullscreenElement) requestFS(); }, IDLE_MS);
+    }
+    ['mousemove','keydown','touchstart','click','scroll'].forEach(e =>
+      document.addEventListener(e, reset, { passive:true })
+    );
+    reset();
+  }
 
   function startStatusTicker() {
     if (!APP_CONFIG.showStatusBar) return;
     const el = document.getElementById('status');
     setInterval(() => {
-      const now = new Date();
-      const ms  = msToNextSyncPoint();
-      const m   = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+      const now = new Date(), ms = msToNextSyncPoint();
       const vid = PLAYLIST[currentIndex] ? (PLAYLIST[currentIndex].label || `Video ${currentIndex+1}`) : '—';
-      el.textContent = `${now.toLocaleTimeString('vi-VN')}  |  ${vid}  |  sync ${m}:${String(s).padStart(2,'0')}`;
+      el.textContent = `${now.toLocaleTimeString('vi-VN')} | ${vid} | sync ${Math.floor(ms/60000)}:${String(Math.floor((ms%60000)/1000)).padStart(2,'0')}`;
     }, 1000);
   }
 
