@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ad Display — Admin</title>
+  <script>
+  // ╔══════════════════════════════════════════════════════════════╗
+  // ║  CẤU HÌNH ADMIN — chỉnh sửa 2 dòng này                     ║
+  // ╚══════════════════════════════════════════════════════════════╝
+  const ADMIN_PIN   = '1234';              // ← đổi mật khẩu tại đây
+  const GITHUB_TOKEN = '';                 // ← dán token vào đây để tự điền (tuỳ chọn)
+  // ──────────────────────────────────────────────────────────────
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -96,9 +104,50 @@
       .video-actions { grid-column: 1/-1; flex-direction: row; justify-content: flex-end; }
       .tabs { flex-direction: column; }
     }
+
+    /* ── PIN screen ── */
+    #pin-screen {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; flex-direction: column; gap: 20px;
+    }
+    #pin-screen.hidden { display: none; }
+    .pin-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 32px 28px; width: 320px; text-align: center; }
+    .pin-logo { font-size: 28px; margin-bottom: 8px; }
+    .pin-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+    .pin-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .pin-input {
+      width: 100%; text-align: center; font-size: 22px; letter-spacing: 0.25em;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 12px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .pin-input:focus { border-color: var(--accent); }
+    .pin-input.error { border-color: var(--danger); animation: shake 0.3s ease; }
+    .pin-btn { width: 100%; margin-top: 14px; justify-content: center; font-size: 15px; padding: 12px; }
+    .pin-error { font-size: 12px; color: var(--danger); margin-top: 10px; min-height: 16px; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px); }
+      75%      { transform: translateX(6px); }
+    }
   </style>
 </head>
 <body>
+
+<!-- ── PIN Screen ── -->
+<div id="pin-screen">
+  <div class="pin-box">
+    <div class="pin-logo">🔒</div>
+    <div class="pin-title">Ad Display Admin</div>
+    <div class="pin-sub">Nhập mật khẩu để tiếp tục</div>
+    <input id="pin-input" class="pin-input" type="password" placeholder="••••"
+           maxlength="20" onkeydown="if(event.key==='Enter') checkPin()">
+    <button class="btn btn-primary pin-btn" onclick="checkPin()">Đăng nhập</button>
+    <div class="pin-error" id="pin-error"></div>
+  </div>
+</div>
+
 <div style="max-width:700px;margin:0 auto;">
 
   <!-- Header -->
@@ -205,8 +254,36 @@ let playlists = { landscape: [], portrait: [] };
 let activeTab = 'landscape';
 let dirty     = false;
 
+// ── PIN Auth ───────────────────────────────────────────────────
+function checkPin() {
+  const input = document.getElementById('pin-input').value;
+  const errEl = document.getElementById('pin-error');
+  if (input === ADMIN_PIN) {
+    sessionStorage.setItem('cps_auth', '1');
+    document.getElementById('pin-screen').classList.add('hidden');
+    document.getElementById('pin-input').value = '';
+    errEl.textContent = '';
+    initAdmin();
+  } else {
+    const el = document.getElementById('pin-input');
+    el.classList.add('error');
+    errEl.textContent = 'Sai mật khẩu, thử lại.';
+    setTimeout(() => el.classList.remove('error'), 400);
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  // Kiểm tra đã xác thực trong session này chưa
+  if (sessionStorage.getItem('cps_auth') === '1') {
+    document.getElementById('pin-screen').classList.add('hidden');
+    initAdmin();
+  } else {
+    document.getElementById('pin-input').focus();
+  }
+});
+
+function initAdmin() {
   const saved = localStorage.getItem('cps_admin');
   if (saved) {
     try {
@@ -216,8 +293,12 @@ window.addEventListener('DOMContentLoaded', () => {
       if (d.repo)  document.getElementById('gh-repo').value  = d.repo;
     } catch {}
   }
+  // Điền token từ config nếu ô còn trống
+  if (GITHUB_TOKEN && !document.getElementById('gh-token').value) {
+    document.getElementById('gh-token').value = GITHUB_TOKEN;
+  }
   render();
-});
+}
 
 function saveLocalSettings() {
   localStorage.setItem('cps_admin', JSON.stringify({
