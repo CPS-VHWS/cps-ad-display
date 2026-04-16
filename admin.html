@@ -252,13 +252,25 @@
     <span class="save-info" id="save-info">Chưa có thay đổi.</span>
     <button class="btn btn-primary" id="btn-save" onclick="saveToGitHub()" disabled>↑ Lưu lên GitHub</button>
   </div>
+
+  <!-- Changelog -->
+  <div style="margin-top:28px;margin-bottom:40px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <h2 style="margin:0;">Lịch sử thay đổi</h2>
+      <button class="btn btn-secondary btn-sm" onclick="loadChangelog()">↻ Làm mới</button>
+    </div>
+    <div class="panel" style="max-height:520px;overflow-y:auto;padding:14px 18px;">
+      <div id="changelog-list" style="color:var(--muted);font-size:13px;">Tải playlist từ GitHub để xem lịch sử.</div>
+    </div>
+  </div>
 </div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
-let playlists = { landscape:[], portrait:[] };
+let playlists         = { landscape:[], portrait:[] };
+let snapshotPlaylists = null; // bản copy lúc load từ GitHub, dùng để tính diff
 let activeTab = 'landscape';
 let dirty     = false;
 let dragSrc   = null;
@@ -777,8 +789,10 @@ async function loadFromGitHub() {
       document.getElementById('cfg-reload-hour').value = cfg.dailyReloadHour ?? 8;
       document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
     }
+    snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
     markDirty(false); render();
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
+    loadChangelog();
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
 }
 
@@ -797,10 +811,115 @@ async function saveToGitHub() {
         sha: cur.sha,
       }),
     });
+    // Ghi changelog
+    const changes = buildChangelogDiff();
+    if (changes.length) await appendChangelog(changes);
+    snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
     markDirty(false);
-    toast('Đã lưu! GitHub Pages cập nhật sau ~1 phút.','success');
+    toast('Đã lưu! Cloudflare Pages cập nhật sau ~30 giây.','success');
+    loadChangelog();
   } catch(e) { toast('Lỗi: '+e.message,'error'); markDirty(true); }
   finally { btn.textContent='↑ Lưu lên GitHub'; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+function diffTab(oldList, newList, tabLabel) {
+  const changes = [];
+  const oldById = new Map(oldList.map((v,i) => [v.id, {...v, pos:i+1}]));
+  const newById = new Map(newList.map((v,i) => [v.id, {...v, pos:i+1}]));
+  // Thêm mới
+  for (const [id,nv] of newById) {
+    if (!oldById.has(id)) {
+      const t = nv.type==='gdrive' ? 'Google Drive' : nv.type==='image' ? 'Hình ảnh' : 'YouTube';
+      changes.push(`${tabLabel} +Thêm "${nv.label}" (${t}) vào vị trí #${nv.pos}`);
+    }
+  }
+  // Xoá
+  for (const [id,ov] of oldById) {
+    if (!newById.has(id)) changes.push(`${tabLabel} −Xoá "${ov.label}" (vị trí #${ov.pos})`);
+  }
+  // Di chuyển / đổi tên / đổi duration
+  for (const [id,nv] of newById) {
+    if (!oldById.has(id)) continue;
+    const ov = oldById.get(id);
+    if (ov.pos !== nv.pos)
+      changes.push(`${tabLabel} ↕Di chuyển "${nv.label}" từ #${ov.pos} → #${nv.pos}`);
+    if ((ov.label||'') !== (nv.label||''))
+      changes.push(`${tabLabel} ✎Đổi tên "${ov.label}" → "${nv.label}"`);
+    if (ov.duration !== nv.duration)
+      changes.push(`${tabLabel} ✎Cập nhật duration "${nv.label}": ${ov.duration||'—'}s → ${nv.duration||'—'}s`);
+  }
+  return changes;
+}
+
+function buildChangelogDiff() {
+  if (!snapshotPlaylists) return [];
+  return [
+    ...diffTab(snapshotPlaylists.landscape, playlists.landscape, 'Ngang'),
+    ...diffTab(snapshotPlaylists.portrait,  playlists.portrait,  'Dọc'),
+  ];
+}
+
+async function appendChangelog(changes) {
+  let existing = [], sha = null;
+  try {
+    const data = await ghFetch('changelog.json');
+    sha = data.sha;
+    existing = JSON.parse(atob(data.content.replace(/\n/g,'')));
+  } catch(e) { /* file chưa tồn tại */ }
+  existing.unshift({ ts: Date.now(), changes });
+  if (existing.length > 200) existing = existing.slice(0, 200);
+  const body = {
+    message: 'chore: update changelog',
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2)))),
+  };
+  if (sha) body.sha = sha;
+  await ghFetch('changelog.json', { method:'PUT', body: JSON.stringify(body) });
+}
+
+async function loadChangelog() {
+  const el = document.getElementById('changelog-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:6px 0;">Đang tải...</div>';
+  try {
+    const { token, owner, repo } = ghParams();
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/changelog.json`, {
+      headers: token ? { Authorization:`Bearer ${token}` } : {},
+    });
+    if (!res.ok) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:6px 0;">Chưa có lịch sử. Lưu lần đầu để bắt đầu ghi.</div>'; return; }
+    const data = await res.json();
+    const entries = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    renderChangelog(entries);
+  } catch(e) { el.innerHTML = `<div style="color:var(--danger);font-size:13px;">${e.message}</div>`; }
+}
+
+function renderChangelog(entries) {
+  const el = document.getElementById('changelog-list');
+  if (!entries||!entries.length) { el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0;">Chưa có lịch sử.</div>'; return; }
+  const iconColor = { '+':'#6de8a0', '−':'#e05252', '↕':'#90b8f8', '✎':'#f0c070' };
+  el.innerHTML = entries.map(entry => {
+    const dateStr = new Date(entry.ts).toLocaleString('vi-VN');
+    const lines = entry.changes.map(c => {
+      const m = c.match(/^(Ngang|Dọc)\s([+−↕✎])(.*)/);
+      if (!m) return `<div style="font-size:12px;color:var(--muted);margin-top:3px;">${c}</div>`;
+      const [,tab,icon,text] = m;
+      const color = iconColor[icon]||'var(--text)';
+      const badge = tab==='Ngang'
+        ? `<span style="font-size:10px;background:rgba(79,110,247,.15);color:var(--landscape);border-radius:4px;padding:1px 5px;">▬ Ngang</span>`
+        : `<span style="font-size:10px;background:rgba(176,110,247,.15);color:var(--portrait);border-radius:4px;padding:1px 5px;">▮ Dọc</span>`;
+      return `<div style="display:flex;align-items:baseline;gap:6px;margin-top:5px;">
+        <span style="font-size:13px;font-weight:700;color:${color};min-width:14px;line-height:1;">${icon}</span>
+        ${badge}
+        <span style="font-size:12px;color:${color};">${text.trim()}</span>
+      </div>`;
+    }).join('');
+    return `<div style="border-left:2px solid var(--border);padding:6px 12px;margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${dateStr}</div>
+      ${lines}
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
