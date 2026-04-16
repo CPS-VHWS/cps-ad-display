@@ -293,12 +293,22 @@ function initAdmin() {
       if (d.repo)  document.getElementById('gh-repo').value  = d.repo;
     } catch {}
   }
-  // Điền token từ config nếu ô còn trống
   if (GITHUB_TOKEN && !document.getElementById('gh-token').value) {
     document.getElementById('gh-token').value = GITHUB_TOKEN;
   }
   render();
+  // Tự động tải playlist nếu đã có token
+  if (document.getElementById('gh-token').value) {
+    loadFromGitHub();
+  }
 }
+
+// Tự lưu token khi gõ xong
+document.addEventListener('DOMContentLoaded', () => {
+  ['gh-token','gh-owner','gh-repo'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', saveLocalSettings);
+  });
+});
 
 function saveLocalSettings() {
   localStorage.setItem('cps_admin', JSON.stringify({
