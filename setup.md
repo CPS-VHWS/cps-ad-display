@@ -1,135 +1,247 @@
-# Ad Display — Setup Guide
+# CPS Ad Display — Setup Guide
 
-Ứng dụng web kiosk phát video quảng cáo toàn màn hình, đồng bộ theo System Clock, hỗ trợ PWA (Add to Home Screen).
+Ứng dụng web kiosk phát video quảng cáo toàn màn hình, đồng bộ theo System Clock, hỗ trợ PWA (Add to Home Screen). Quản lý playlist qua Admin Dashboard không cần chạm vào code.
+
+---
+
+## Tổng quan
+
+| | |
+|---|---|
+| **URL ngang (landscape)** | `https://cps-vhws.github.io/cps-ad-display/` |
+| **URL dọc (portrait)** | `https://cps-vhws.github.io/cps-ad-display/vertical/` |
+| **Admin dashboard** | `https://cps-vhws.github.io/cps-ad-display/admin.html` |
+| **Admin PIN** | `0526` |
+| **GitHub repo** | `https://github.com/CPS-VHWS/cps-ad-display` |
 
 ---
 
 ## Cấu trúc file
 
 ```
-ad-display/
-├── index.html      ← App chính (không cần sửa thường xuyên)
-├── config.js       ← ✏️  PLAYLIST và cài đặt app (sửa tại đây)
-├── manifest.json   ← PWA metadata
-├── sw.js           ← Service Worker (offline shell + Add to Home Screen)
+cps-ad-display/
+├── index.html          ← App hiển thị NGANG (16:9)
+├── config.js           ← Playlist + cấu hình app (do Admin Dashboard ghi)
+├── manifest.json       ← PWA metadata (landscape)
+├── sw.js               ← Service Worker (offline + Add to Home Screen)
+├── admin.html          ← Admin Dashboard quản lý playlist
+├── setup.md            ← File này
 ├── icons/
-│   ├── icon-192.png   ← ⚠️  Cần tự thêm (xem bên dưới)
-│   └── icon-512.png   ← ⚠️  Cần tự thêm
-└── setup.md        ← File này
+│   ├── icon-192.png    ← PWA icon 192×192
+│   └── icon-512.png    ← PWA icon 512×512
+└── vertical/
+    ├── index.html      ← App hiển thị DỌC (9:16)
+    └── manifest.json   ← PWA metadata (portrait)
 ```
 
 ---
 
-## 1. Cập nhật Playlist
+## Yêu cầu ban đầu → Tính năng đã hoàn thiện
 
-Mở `config.js`, chỉnh mảng `PLAYLIST`:
+### Yêu cầu gốc
+- Phát video YouTube toàn màn hình, muted, tự động
+- Đồng bộ tất cả màn hình theo System Clock (không cần server)
+- PWA — Add to Home Screen trên iPad, Android, MacBook
+- Admin dashboard để cập nhật playlist từ xa
+- Hỗ trợ riêng video dọc (9:16) và ngang (16:9)
+- Hỗ trợ Google Drive video và hình ảnh
+- Kéo thả thứ tự video trong admin
+- Import playlist bằng CSV
+
+### Tính năng đã hoàn thiện
+
+| Tính năng | Trạng thái |
+|---|---|
+| YouTube IFrame API, autoplay muted | ✅ |
+| Đồng bộ 5 phút theo System Clock | ✅ |
+| Skip tự động khi video lỗi | ✅ |
+| Daily reload lúc 08:00 | ✅ |
+| PWA — landscape + portrait riêng | ✅ |
+| Admin Dashboard với PIN | ✅ |
+| Lưu GitHub token ở localStorage | ✅ |
+| Tự đọc thời lượng video YouTube | ✅ |
+| Tổng thời lượng playlist | ✅ |
+| Google Drive video (embed) | ✅ |
+| Google Drive / URL hình ảnh | ✅ |
+| Kéo thả thứ tự video | ✅ |
+| Import / Export CSV | ✅ |
+| Fullscreen kiosk: click thoát, idle vào lại | ✅ |
+| Loop playlist khi hết video | ✅ |
+| Thanh trạng thái (giờ, tên video, sync) | ✅ |
+
+---
+
+## Config.js — Cấu trúc
+
+File `config.js` được Admin Dashboard tự động ghi. Cấu trúc:
 
 ```js
-const PLAYLIST = [
-  { id: 'VIDEO_ID_1', duration: 60,  label: 'Quảng cáo sản phẩm A' },
-  { id: 'VIDEO_ID_2', duration: 90,  label: 'Quảng cáo sản phẩm B' },
+// Playlist ngang — dùng cho index.html
+const PLAYLIST_LANDSCAPE = [
+  { id: 'VIDEO_ID', label: 'Tên video' },                        // YouTube (mặc định)
+  { id: 'DRIVE_FILE_ID', type: 'gdrive', label: 'Video GDrive', duration: 60 }, // Google Drive video
+  { id: 'DRIVE_FILE_ID', type: 'image', label: 'Ảnh', duration: 5 },            // Hình ảnh GDrive
+  { id: 'https://example.com/img.jpg', type: 'image', label: 'Ảnh URL' },       // Hình ảnh URL
 ];
+
+// Playlist dọc — dùng cho vertical/index.html
+const PLAYLIST_PORTRAIT = [
+  { id: 'VIDEO_ID', label: 'Tên video' },
+];
+
+// Cấu hình chung
+const APP_CONFIG = {
+  syncIntervalMinutes: 5,   // Mốc đồng bộ (phút)
+  dailyReloadHour: 8,       // Giờ tự reload trang
+  dailyReloadMinute: 0,     // Phút tự reload trang
+  showStatusBar: true,      // Hiện thanh trạng thái góc dưới phải
+  errorSkipDelay: 2000,     // ms chờ trước khi skip video lỗi
+};
 ```
 
-**Lấy Video ID:** Mở video trên YouTube → URL dạng `youtube.com/watch?v=XXXXX` → `XXXXX` chính là ID.
+**Loại media hỗ trợ:**
 
----
-
-## 2. Cài đặt App Config (config.js)
-
-| Tham số | Mặc định | Mô tả |
+| `type` | `id` cần điền | `duration` |
 |---|---|---|
-| `syncIntervalMinutes` | `5` | Mốc đồng bộ (phút). Ví dụ: 5 → 10:00, 10:05, 10:10 |
-| `dailyReloadHour` | `8` | Giờ tự động reload trang (0–23) |
-| `dailyReloadMinute` | `0` | Phút tự động reload trang |
-| `showStatusBar` | `true` | Hiện/ẩn thanh trạng thái nhỏ góc dưới phải |
-| `errorSkipDelay` | `2000` | Thời gian chờ (ms) trước khi skip video lỗi |
+| *(không điền — mặc định YouTube)* | YouTube Video ID (vd: `dQw4w9WgXcQ`) | Tự đọc từ API |
+| `gdrive` | Google Drive File ID | Cần điền thủ công (giây) |
+| `image` | Google Drive File ID hoặc URL đầy đủ | Mặc định 5s nếu không điền |
 
 ---
 
-## 3. Deploy
+## Admin Dashboard
 
-### Cách đơn giản nhất: GitHub Pages (miễn phí, HTTPS)
+### Truy cập
+1. Mở `https://cps-vhws.github.io/cps-ad-display/admin.html`
+2. Nhập PIN: **`0526`**
+3. Lần đầu: nhập GitHub Personal Access Token (quyền `contents: write` trên repo `cps-ad-display`)
+   - Token được lưu ở **localStorage** trên trình duyệt — không commit lên GitHub
+   - Tạo token tại: `github.com → Settings → Developer settings → Personal access tokens (fine-grained)`
 
-1. Tạo repo GitHub mới (ví dụ: `ad-display`)
-2. Upload toàn bộ thư mục `ad-display/` lên repo
-3. Vào **Settings → Pages → Source: main branch / root**
-4. URL sẽ là: `https://<username>.github.io/ad-display/`
+### Quản lý playlist
+- **Thêm video**: Dán YouTube link hoặc ID → nhấn "Thêm"
+  - Duration tự động fetch nếu video public; cần nhập thủ công nếu unlisted
+- **Thêm Google Drive video**: Chọn type "Google Drive", dán File ID
+- **Thêm hình ảnh**: Chọn type "Image", dán Google Drive File ID hoặc URL hình ảnh
+- **Kéo thả**: Giữ và kéo hàng để sắp xếp thứ tự
+- **Xoá**: Nhấn nút ✕ ở từng hàng
+- **Lưu**: Nhấn "Lưu & Deploy" → ghi thẳng vào `config.js` trên GitHub
 
-> **Lưu ý:** YouTube IFrame API **bắt buộc cần HTTPS**. Không chạy được qua `file://` trên trình duyệt hiện đại.
+### Import CSV
+Cột theo thứ tự: `type, id, label, duration`
 
-### Các lựa chọn deploy khác
+```csv
+,dQw4w9WgXcQ,Quảng cáo A,180
+,bg3iEHHTGtQ,Quảng cáo B,
+gdrive,1aBcDeFgHiJkL,Video Drive,90
+image,1xYzAbCdEfGh,Banner sale,8
+image,https://example.com/img.jpg,Banner URL,5
+```
 
-- **Netlify** — kéo thả thư mục vào netlify.com/drop
-- **Vercel** — `vercel deploy`
-- **Máy chủ nội bộ** — Nginx/Apache phục vụ qua HTTPS (cần SSL cert)
-- **localhost (test)** — `npx serve .` hoặc VS Code Live Server
+- Cột `type` để trống = YouTube
+- Cột `duration` để trống = tự đọc (YouTube) hoặc 5s (image)
 
----
-
-## 4. Add to Home Screen (PWA)
-
-### iPad / iPhone (Safari)
-1. Mở URL app trên **Safari**
-2. Nhấn nút **Share** (hình vuông + mũi tên lên)
-3. Chọn **"Add to Home Screen"**
-4. Đặt tên → **Add**
-5. Mở từ Home Screen → tự động vào Standalone mode (không có thanh địa chỉ)
-
-### Android (Chrome)
-1. Mở URL app trên **Chrome**
-2. Nhấn menu **⋮** → **"Add to Home screen"**
-3. Xác nhận → **Add**
-
-### MacBook / Windows (Chrome/Edge)
-1. Mở URL app
-2. Nhấn icon **⊕** ở cuối thanh địa chỉ → **"Install"**
-3. App chạy như cửa sổ riêng, không có thanh trình duyệt
+### Export CSV
+Nhấn "Export CSV" để tải về file playlist hiện tại.
 
 ---
 
-## 5. Thêm icon PWA (bắt buộc để Add to Home Screen hiển thị đúng)
+## Cài đặt kiosk trên máy hiển thị
 
-Cần 2 file PNG nền đen, biểu tượng trắng (hoặc logo công ty):
+### iPad (Safari PWA)
+1. Mở Safari → truy cập URL phù hợp (ngang hoặc dọc)
+2. Nhấn **Share** → **"Add to Home Screen"** → **Add**
+3. Mở app từ Home Screen → chạy standalone, fullscreen tự động
+4. *(Tuỳ chọn)* Bật **Guided Access**: Cài đặt → Trợ năng → Guided Access → khoá app khi trưng bày
 
-- `icons/icon-192.png` — 192 × 192 px
-- `icons/icon-512.png` — 512 × 512 px
+### Android (Chrome PWA)
+1. Mở Chrome → truy cập URL
+2. Menu **⋮** → **"Add to Home screen"** → Xác nhận
+3. Mở từ màn hình chính → fullscreen tự động
 
-**Tạo nhanh bằng:** [realfavicongenerator.net](https://realfavicongenerator.net) hoặc Figma/Photoshop.
+### MacBook (Chrome/Edge — Install as App)
+1. Mở trình duyệt → truy cập URL
+2. Nhấn icon **⊕** cuối thanh địa chỉ → **Install**
+3. App chạy như cửa sổ riêng
+4. *(Tuỳ chọn)* Thêm vào Login Items: System Settings → General → Login Items
+
+### Windows (Chrome/Edge — Install as App)
+1. Mở trình duyệt → truy cập URL
+2. Menu **⋮** → **Apps** → **Install this site as an app**
+3. *(Tuỳ chọn)* Thêm shortcut vào Startup folder
 
 ---
 
-## 6. Cơ chế hoạt động (tóm tắt)
+## Cơ chế Fullscreen (Kiosk)
 
-| Tính năng | Cách hoạt động |
+Thiết bị đặt ở cửa hàng / sự kiện để **khách trải nghiệm trực tiếp**:
+
+| Sự kiện | Hành động |
 |---|---|
-| **Đồng bộ 5 phút** | `setTimeout` tính `ms` còn lại đến mốc kế tiếp (dựa vào System Clock). Đúng giờ → `startVideo(0)` |
-| **Autoplay không bị chặn** | Video luôn `mute: 1` từ đầu |
-| **Object-fit cover** | CSS trick: iframe `min-width: 177.78vh` + `min-height: 56.25vw` + `translate(-50%,-50%)` |
-| **Fullscreen khi chạm** | Overlay trong suốt bắt `click`/`touchstart` → `requestFullscreen()` |
-| **Skip video lỗi** | `onError` callback → `setTimeout(playNext, errorSkipDelay)` |
-| **Daily reload 8h** | `setTimeout` tính ms đến 08:00 ngày hôm sau → `location.reload(true)` |
-| **PWA standalone** | `manifest.json` `display: standalone` + Service Worker |
+| App khởi động | Vào fullscreen tự động |
+| Khách **click / chạm** | **Thoát fullscreen** → khách dùng được máy |
+| Tab bị ẩn rồi hiện lại | Vào lại fullscreen |
+| **Không tương tác 2 phút** | **Vào lại fullscreen** tự động |
 
 ---
 
-## 7. Kiểm tra / Debug
+## Cơ chế đồng bộ (Sync)
 
-Mở **DevTools → Console**, tìm log có prefix `[AdDisplay]`:
+Tất cả máy **không cần kết nối với nhau** — chỉ cần cùng múi giờ hệ thống:
 
 ```
-[AdDisplay] Daily reload scheduled at 17/04/2026, 08:00:00
-[AdDisplay] Sync point — restarting from video 1
-[AdDisplay] Player error code: 150 → skip to next
+Mỗi máy tính: ms còn lại = (5 phút - (giờ hiện tại % 5 phút))
+Đúng mốc (10:00, 10:05, 10:10,...) → startVideo(0)
 ```
 
-Thanh trạng thái góc dưới phải hiển thị: `giờ hiện tại | tên video | sync X:XX`
+- `syncIntervalMinutes: 5` → đồng bộ mỗi 5 phút
+- Để tắt sync: tăng `syncIntervalMinutes` lên số lớn (vd: `9999`)
 
 ---
 
-## 8. Ghi chú vận hành
+## Cơ chế kỹ thuật (tham khảo)
 
-- Các máy phải **cùng múi giờ hệ thống** để đồng bộ chính xác.
-- Kết nối mạng ổn định để load video YouTube không bị buffer.
-- Nếu muốn **bật âm thanh**: sửa `mute: 0` trong `index.html` (dòng playerVars) — lưu ý trình duyệt có thể chặn autoplay có âm thanh.
-- Trên **iPad kiosk**: bật Guided Access (Cài đặt → Trợ năng → Guided Access) để khoá màn hình trên app.
+| Vấn đề | Giải pháp |
+|---|---|
+| Autoplay bị chặn | Luôn `mute: 1` trong playerVars + `player.mute()` sau onReady |
+| iframe không hỗ trợ object-fit | CSS trick: `min-width: 177.78vh` + `min-height: 56.25vw` + `translate(-50%,-50%)` |
+| Loop playlist | Modulo: `((index % length) + length) % length` — tự wrap về 0 |
+| GitHub token an toàn | Không commit vào code; lưu ở `localStorage` trình duyệt admin |
+| Video unlisted YouTube | Không embed được qua IFrame API; dùng Google Drive thay thế |
+
+---
+
+## Debug / Kiểm tra
+
+Thanh trạng thái góc dưới phải (nếu `showStatusBar: true`):
+```
+10:03:25 | Tên video | sync 1:35
+```
+
+DevTools → Console → tìm prefix `[AdDisplay]` hoặc `[AdDisplay:Portrait]`:
+```
+[AdDisplay] Error: 150 → skip
+[AdDisplay:Portrait] Error: 101 → skip
+```
+
+---
+
+## Deploy / Cập nhật code
+
+```bash
+# Clone lần đầu
+git clone https://github.com/CPS-VHWS/cps-ad-display.git
+
+# Commit và push sau khi sửa code
+git add .
+git commit -m "mô tả thay đổi"
+git push
+
+# Nếu remote có commit mới trước (vd: admin dashboard vừa lưu config)
+git pull --rebase
+git push
+```
+
+GitHub Pages tự deploy sau ~1 phút khi có push mới.
+
+> **Lưu ý bảo mật:** Không bao giờ commit GitHub Token vào code. GitHub Push Protection sẽ chặn push nếu phát hiện token dạng `ghp_...` trong file.
