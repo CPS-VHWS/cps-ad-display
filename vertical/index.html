@@ -114,21 +114,33 @@
   }
 
   // ── Fullscreen ─────────────────────────────────────────────────
-  function requestFS() {
+  function enterFS() {
     const el = document.documentElement;
     const fn = el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
     if (fn) fn.call(el).catch(()=>{});
   }
-  document.getElementById('overlay').addEventListener('click', requestFS);
-  document.getElementById('overlay').addEventListener('touchstart', requestFS, { passive:true });
+  function exitFS() {
+    const fn = document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
+    if (fn && (document.fullscreenElement||document.webkitFullscreenElement)) fn.call(document).catch(()=>{});
+  }
+  function isFS() { return !!(document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement); }
 
-  // ── Idle → tự fullscreen sau 2 phút không tương tác ──────────
+  // Khách click/chạm → thoát fullscreen để dùng máy
+  const overlay = document.getElementById('overlay');
+  overlay.addEventListener('click',      exitFS);
+  overlay.addEventListener('touchstart', exitFS, { passive:true });
+
+  // Tab trở lại visible → vào fullscreen
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') enterFS();
+  });
+
+  // Idle 2 phút không tương tác → vào lại fullscreen
   function setupIdleFullscreen() {
     let idleTimer;
-    const IDLE_MS = 2 * 60 * 1000;
     function reset() {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => { if (!document.fullscreenElement) requestFS(); }, IDLE_MS);
+      idleTimer = setTimeout(() => { if (!isFS()) enterFS(); }, 2 * 60 * 1000);
     }
     ['mousemove','keydown','touchstart','click','scroll'].forEach(e =>
       document.addEventListener(e, reset, { passive:true })
