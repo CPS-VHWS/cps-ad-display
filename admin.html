@@ -200,9 +200,18 @@
       Thêm video
       <span class="mode-badge" id="add-mode-badge">Ngang</span>
     </h2>
-    <div class="field">
-      <label>YouTube URL hoặc Video ID</label>
-      <input id="new-url" type="text" placeholder="https://youtube.com/watch?v=... hoặc ID" oninput="previewNewThumb()">
+    <div class="field-row">
+      <div class="field">
+        <label>Nguồn</label>
+        <select id="new-type" onchange="onTypeChange()">
+          <option value="youtube">YouTube</option>
+          <option value="gdrive">Google Drive</option>
+        </select>
+      </div>
+      <div class="field" id="field-url">
+        <label id="label-url">YouTube URL hoặc Video ID</label>
+        <input id="new-url" type="text" placeholder="https://youtube.com/watch?v=..." oninput="previewNewThumb()">
+      </div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -210,13 +219,24 @@
         <input id="new-label" type="text" placeholder="Quảng cáo sản phẩm A">
       </div>
       <div class="field">
-        <label>Thời lượng giây (tuỳ chọn)</label>
+        <label>Thời lượng giây <span id="dur-hint" style="color:var(--accent);font-size:10px;">(tự lấy sau khi thêm)</span></label>
         <input id="new-duration" type="number" placeholder="60" min="1">
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" onclick="addVideo()">+ Thêm vào playlist</button>
       <img id="new-thumb" src="" alt="" style="height:40px;border-radius:5px;display:none;">
+    </div>
+  </div>
+
+  <!-- Duration tools -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;">Thời lượng playlist</div>
+        <div id="duration-summary" style="font-size:12px;color:var(--muted);margin-top:4px;">— chưa tính</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-duration" onclick="fetchDurations()">⏱ Tự động lấy thời lượng</button>
     </div>
   </div>
 
@@ -328,7 +348,27 @@ function switchTab(tab) {
   render();
 }
 
-// ── YouTube ID extraction ──────────────────────────────────────
+// ── Type selector ─────────────────────────────────────────────
+function onTypeChange() {
+  const type  = document.getElementById('new-type').value;
+  const hint  = document.getElementById('dur-hint');
+  const lbl   = document.getElementById('label-url');
+  const input = document.getElementById('new-url');
+  if (type === 'gdrive') {
+    lbl.textContent   = 'Google Drive share URL';
+    input.placeholder = 'https://drive.google.com/file/d/.../view';
+    hint.textContent  = '(bắt buộc cho Google Drive)';
+    hint.style.color  = 'var(--danger)';
+  } else {
+    lbl.textContent   = 'YouTube URL hoặc Video ID';
+    input.placeholder = 'https://youtube.com/watch?v=...';
+    hint.textContent  = '(tự lấy sau khi thêm)';
+    hint.style.color  = 'var(--accent)';
+  }
+  document.getElementById('new-thumb').style.display = 'none';
+}
+
+// ── ID extraction ──────────────────────────────────────────────
 function extractYTId(input) {
   input = input.trim();
   const patterns = [/[?&]v=([A-Za-z0-9_-]{11})/, /youtu\.be\/([A-Za-z0-9_-]{11})/, /embed\/([A-Za-z0-9_-]{11})/, /^([A-Za-z0-9_-]{11})$/];
@@ -336,13 +376,27 @@ function extractYTId(input) {
   return null;
 }
 
+function extractGDriveId(input) {
+  input = input.trim();
+  const patterns = [/\/file\/d\/([A-Za-z0-9_-]+)/, /[?&]id=([A-Za-z0-9_-]+)/];
+  for (const p of patterns) { const m = input.match(p); if (m) return m[1]; }
+  // raw ID fallback (long alphanumeric)
+  if (/^[A-Za-z0-9_-]{25,}$/.test(input)) return input;
+  return null;
+}
+
 function thumbUrl(id) { return `https://img.youtube.com/vi/${id}/mqdefault.jpg`; }
 
 function previewNewThumb() {
-  const id  = extractYTId(document.getElementById('new-url').value);
-  const img = document.getElementById('new-thumb');
-  if (id) { img.src = thumbUrl(id); img.style.display = 'block'; }
-  else      { img.style.display = 'none'; }
+  const type = document.getElementById('new-type').value;
+  const img  = document.getElementById('new-thumb');
+  if (type === 'youtube') {
+    const id = extractYTId(document.getElementById('new-url').value);
+    if (id) { img.src = thumbUrl(id); img.style.display = 'block'; }
+    else      img.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+  }
 }
 
 // ── Render playlist ────────────────────────────────────────────
@@ -359,16 +413,27 @@ function render() {
   }
 
   container.innerHTML = `<div class="playlist-wrap">${
-    pl.map((v, i) => `
+    pl.map((v, i) => {
+      const isGD    = v.type === 'gdrive';
+      const thumbEl = isGD
+        ? `<div class="thumb-placeholder" style="display:flex;background:#1a2035;">
+             <span style="font-size:11px;color:var(--muted);text-align:center;line-height:1.3;">Google<br>Drive</span>
+           </div>`
+        : `<img class="thumb" src="${thumbUrl(v.id)}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt="">
+           <div class="thumb-placeholder" style="display:none;">▶</div>`;
+      const typeBadge = isGD
+        ? `<span style="font-size:10px;background:rgba(66,133,244,0.15);color:#6ba3ff;padding:1px 6px;border-radius:8px;">Drive</span>`
+        : `<span style="font-size:10px;background:rgba(255,0,0,0.12);color:#ff7070;padding:1px 6px;border-radius:8px;">YT</span>`;
+      return `
       <div class="video-card">
-        <img class="thumb" src="${thumbUrl(v.id)}"
-             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt="">
-        <div class="thumb-placeholder" style="display:none;">▶</div>
+        ${thumbEl}
         <div class="video-info">
           <div class="video-label">${escHtml(v.label || `Video ${i+1}`)}</div>
           <div class="video-meta">
-            <span class="video-id">${v.id}</span>
-            ${v.duration ? `<span>${v.duration}s</span>` : ''}
+            ${typeBadge}
+            <span class="video-id">${v.id.length > 14 ? v.id.slice(0,14)+'…' : v.id}</span>
+            ${v.duration ? `<span>${v.duration}s</span>` : '<span style="color:#e05252;font-size:10px;">⚠ chưa có duration</span>'}
           </div>
         </div>
         <div class="video-actions">
@@ -378,7 +443,8 @@ function render() {
           </div>
           <button class="btn btn-danger btn-sm" onclick="removeVideo('${activeTab}',${i})">Xóa</button>
         </div>
-      </div>`).join('')
+      </div>`;
+    }).join('')
   }</div>`;
 }
 
@@ -388,21 +454,26 @@ function escHtml(s) {
 
 // ── Playlist actions ───────────────────────────────────────────
 function addVideo() {
+  const type   = document.getElementById('new-type').value;
   const urlVal = document.getElementById('new-url').value;
   const label  = document.getElementById('new-label').value.trim();
   const dur    = document.getElementById('new-duration').value;
-  const id     = extractYTId(urlVal);
 
-  if (!id) { toast('URL/ID không hợp lệ', 'error'); return; }
+  const id = type === 'gdrive' ? extractGDriveId(urlVal) : extractYTId(urlVal);
+  if (!id) { toast(type === 'gdrive' ? 'Không tìm thấy File ID trong URL Drive' : 'URL/ID YouTube không hợp lệ', 'error'); return; }
   if (playlists[activeTab].some(v => v.id === id)) { toast('Video này đã có trong playlist', 'error'); return; }
 
-  playlists[activeTab].push({ id, label: label || `Video ${playlists[activeTab].length + 1}`, duration: dur ? parseInt(dur) : null });
+  const entry = { id, type, label: label || `Video ${playlists[activeTab].length + 1}` };
+  if (dur) entry.duration = parseInt(dur);
+  playlists[activeTab].push(entry);
+
   document.getElementById('new-url').value      = '';
   document.getElementById('new-label').value    = '';
   document.getElementById('new-duration').value = '';
   document.getElementById('new-thumb').style.display = 'none';
   markDirty(true);
   render();
+  updateDurationSummary();
 }
 
 function removeVideo(tab, i) {
@@ -421,13 +492,100 @@ function move(tab, i, dir) {
 
 function markDirty(val) {
   dirty = val;
-  const btn  = document.getElementById('btn-save');
-  const info = document.getElementById('save-info');
+  const btn   = document.getElementById('btn-save');
+  const info  = document.getElementById('save-info');
   const total = playlists.landscape.length + playlists.portrait.length;
   btn.disabled = !val;
   info.textContent = val
     ? `${total} video tổng cộng — có thay đổi chưa lưu.`
     : `${total} video tổng cộng — đã đồng bộ với GitHub.`;
+  updateDurationSummary();
+}
+
+// ── Duration summary + sync suggestion ────────────────────────
+function updateDurationSummary() {
+  const all = [...playlists.landscape, ...playlists.portrait];
+  const total   = all.reduce((s, v) => s + (v.duration || 0), 0);
+  const missing = all.filter(v => !v.duration).length;
+  const el = document.getElementById('duration-summary');
+  if (!all.length) { el.textContent = '— chưa có video'; return; }
+  const m = Math.floor(total / 60), s = total % 60;
+  const suggested = Math.ceil(total / 60);
+  let txt = `Tổng: ${m}p ${s}s`;
+  if (missing) txt += ` (${missing} video chưa có duration)`;
+  txt += ` → Gợi ý sync: ${suggested} phút`;
+  el.textContent = txt;
+  el.style.color = missing ? 'var(--danger)' : 'var(--muted)';
+}
+
+// ── Auto-fetch durations via hidden YT player ─────────────────
+let ytApiReady = false;
+function ensureYTApi() {
+  return new Promise(resolve => {
+    if (ytApiReady) { resolve(); return; }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { ytApiReady = true; if (prev) prev(); resolve(); };
+    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    } else if (typeof YT !== 'undefined' && YT.Player) {
+      ytApiReady = true; resolve();
+    }
+  });
+}
+
+function getYTDuration(videoId) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:2px;height:2px;overflow:hidden;';
+    document.body.appendChild(wrap);
+    const timeout = setTimeout(() => { try { wrap.remove(); } catch(e){} resolve(null); }, 12000);
+    new YT.Player(wrap, {
+      videoId,
+      playerVars: { autoplay:0, mute:1 },
+      events: {
+        onReady: e => {
+          clearTimeout(timeout);
+          const dur = e.target.getDuration();
+          e.target.destroy();
+          wrap.remove();
+          resolve(dur > 0 ? Math.round(dur) : null);
+        },
+        onError: () => { clearTimeout(timeout); wrap.remove(); resolve(null); }
+      }
+    });
+  });
+}
+
+async function fetchDurations() {
+  const btn = document.getElementById('btn-duration');
+  btn.disabled = true; btn.textContent = 'Đang tải API...';
+  try {
+    await ensureYTApi();
+  } catch(e) { toast('Không load được YouTube API', 'error'); btn.disabled=false; btn.textContent='⏱ Tự động lấy thời lượng'; return; }
+
+  let fetched = 0, failed = 0;
+  for (const tab of ['landscape','portrait']) {
+    for (let i = 0; i < playlists[tab].length; i++) {
+      const v = playlists[tab][i];
+      if (v.type === 'gdrive') continue;
+      btn.textContent = `Đang lấy ${fetched + failed + 1}/${playlists.landscape.length + playlists.portrait.length}...`;
+      const dur = await getYTDuration(v.id);
+      if (dur) { playlists[tab][i].duration = dur; fetched++; }
+      else { failed++; }
+    }
+  }
+
+  // Gợi ý sync interval
+  const totalSec   = [...playlists.landscape,...playlists.portrait].reduce((s,v) => s+(v.duration||0), 0);
+  const suggested  = Math.ceil(totalSec / 60);
+  if (suggested > 0) document.getElementById('cfg-sync').value = suggested;
+
+  markDirty(true);
+  render();
+  toast(`Lấy xong: ${fetched} video · ${failed} lỗi · Sync gợi ý: ${suggested} phút`, fetched ? 'success' : 'error');
+  btn.disabled = false; btn.textContent = '⏱ Tự động lấy thời lượng';
 }
 
 // ── Build config.js ────────────────────────────────────────────
@@ -441,6 +599,7 @@ function buildConfigJs() {
   function listStr(pl) {
     return pl.map(v => {
       const parts = [`id: '${v.id}'`];
+      if (v.type && v.type !== 'youtube') parts.push(`type: '${v.type}'`);
       if (v.duration) parts.push(`duration: ${v.duration}`);
       parts.push(`label: '${(v.label||'').replace(/'/g,"\\'")}'`);
       return `  { ${parts.join(', ')} }`;

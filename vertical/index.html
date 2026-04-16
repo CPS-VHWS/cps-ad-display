@@ -4,99 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-
-  <!-- PWA / Add to Home Screen -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AdDisplay Portrait">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
-
   <title>Ad Display — Dọc</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width:100%; height:100%; background:#000; overflow:hidden; cursor:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 
-    html, body {
-      width: 100%; height: 100%;
-      background: #000;
-      overflow: hidden;
-      cursor: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
+    #player-wrap { position:fixed; inset:0; overflow:hidden; background:#000; }
 
-    #player-wrap {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      background: #000;
+    /* Cover effect cho video DỌC (9:16) */
+    #yt-player, #gd-player {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      width:56.25vh; height:100vh;
+      min-width:100vw; min-height:177.78vw;
+      pointer-events:none; border:none;
     }
+    #yt-player iframe { width:100%!important; height:100%!important; border:none; pointer-events:none; }
+    #gd-player { display:none; }
 
-    /*
-      Object-fit: cover cho video DỌC (9:16).
-      - height: 100vh, width: 56.25vh (= 100 * 9/16)
-      - Nếu 56.25vh < 100vw thì phải mở rộng: width=100vw, height=177.78vw
-      → min-width: 100vw + min-height: 177.78vw đảm bảo cover cả 2 trường hợp
-    */
-    #yt-player {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 56.25vh;    /* 100 * 9/16 */
-      height: 100vh;
-      min-width: 100vw;
-      min-height: 177.78vw; /* 100 * 16/9 */
-      pointer-events: none;
-    }
+    #overlay { position:fixed; inset:0; z-index:100; cursor:none; background:transparent; }
 
-    #yt-player iframe {
-      width: 100% !important;
-      height: 100% !important;
-      border: none;
-      pointer-events: none;
-    }
+    #status { position:fixed; bottom:12px; right:14px; color:rgba(255,255,255,0.25); font:11px/1.4 'SF Mono','Consolas',monospace; letter-spacing:0.03em; z-index:200; pointer-events:none; text-align:right; }
 
-    #overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      cursor: none;
-      background: transparent;
-    }
-
-    #status {
-      position: fixed;
-      bottom: 12px; right: 14px;
-      color: rgba(255,255,255,0.25);
-      font: 11px/1.4 'SF Mono', 'Consolas', monospace;
-      letter-spacing: 0.03em;
-      z-index: 200;
-      pointer-events: none;
-      text-align: right;
-    }
-
-    #splash {
-      position: fixed;
-      inset: 0;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 300;
-      transition: opacity 0.6s ease;
-    }
-    #splash.hidden { opacity: 0; pointer-events: none; }
-    #splash-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.4);
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50%       { opacity: 1;   transform: scale(1.2); }
-    }
+    #splash { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:300; transition:opacity 0.6s ease; }
+    #splash.hidden { opacity:0; pointer-events:none; }
+    #splash-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); animation:pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
   </style>
 </head>
 <body>
@@ -105,95 +44,81 @@
 
   <div id="player-wrap">
     <div id="yt-player"></div>
+    <iframe id="gd-player" allow="autoplay" src="about:blank"></iframe>
   </div>
 
   <div id="overlay"></div>
   <div id="status"></div>
 
   <script src="../config.js"></script>
-
   <script>
-  const PLAYLIST = PLAYLIST_PORTRAIT;   // dùng playlist dọc
-
+  const PLAYLIST   = PLAYLIST_PORTRAIT;
   let player       = null;
   let currentIndex = 0;
   let isReady      = false;
   let syncTimer    = null;
+  let gdTimer      = null;
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
-      videoId: PLAYLIST[0].id,
-      playerVars: {
-        autoplay     : 1,
-        mute         : 1,
-        controls     : 0,
-        disablekb    : 1,
-        fs           : 0,
-        iv_load_policy: 3,
-        modestbranding: 1,
-        rel          : 0,
-        showinfo     : 0,
-        playsinline  : 1,
-        enablejsapi  : 1,
-      },
-      events: {
-        onReady      : onPlayerReady,
-        onStateChange: onPlayerStateChange,
-        onError      : onPlayerError,
-      },
+      playerVars: { autoplay:1, mute:1, controls:0, disablekb:1, fs:0, iv_load_policy:3, modestbranding:1, rel:0, showinfo:0, playsinline:1, enablejsapi:1 },
+      events: { onReady:onPlayerReady, onStateChange:onPlayerStateChange, onError:onPlayerError },
     });
   };
 
   function onPlayerReady() {
     isReady = true;
     player.mute();
-    setTimeout(() => {
-      const splash = document.getElementById('splash');
-      if (splash) splash.classList.add('hidden');
-    }, 800);
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
     startVideo(0);
     scheduleSyncTimer();
     scheduleDaily8AMReload();
     startStatusTicker();
   }
 
-  function onPlayerStateChange(e) {
-    if (e.data === 0) playNext();
-  }
-
-  function onPlayerError(e) {
-    console.warn('[AdDisplay:Portrait] Error:', e.data, '→ skip');
-    setTimeout(playNext, APP_CONFIG.errorSkipDelay);
-  }
+  function onPlayerStateChange(e) { if (e.data === 0) playNext(); }
+  function onPlayerError(e) { console.warn('[AdDisplay:Portrait] Error:', e.data); setTimeout(playNext, APP_CONFIG.errorSkipDelay); }
 
   function startVideo(index) {
-    if (!isReady || !player || !PLAYLIST.length) return;
+    if (!PLAYLIST.length) return;
     currentIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
-    player.loadVideoById({ videoId: PLAYLIST[currentIndex].id });
-    player.mute();
+    const video  = PLAYLIST[currentIndex];
+    clearTimeout(gdTimer);
+
+    if (video.type === 'gdrive') {
+      if (player && isReady) { try { player.stopVideo(); } catch(e){} }
+      document.getElementById('yt-player').style.display = 'none';
+      const gd = document.getElementById('gd-player');
+      gd.style.display = 'block';
+      gd.src = `https://drive.google.com/file/d/${video.id}/preview?rm=minimal`;
+      if (video.duration) gdTimer = setTimeout(playNext, video.duration * 1000);
+    } else {
+      document.getElementById('gd-player').style.display = 'none';
+      document.getElementById('gd-player').src = 'about:blank';
+      document.getElementById('yt-player').style.display = 'block';
+      if (!isReady || !player) return;
+      player.loadVideoById({ videoId: video.id });
+      player.mute();
+    }
   }
 
   function playNext() { startVideo(currentIndex + 1); }
 
   function msToNextSyncPoint() {
-    const now      = new Date();
+    const now = new Date();
     const interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
-    const elapsed  = (now.getMinutes() * 60000) + (now.getSeconds() * 1000) + now.getMilliseconds();
-    const remainder = elapsed % interval;
-    return remainder === 0 ? interval : (interval - remainder);
+    const elapsed = (now.getMinutes()*60000) + (now.getSeconds()*1000) + now.getMilliseconds();
+    const rem = elapsed % interval;
+    return rem === 0 ? interval : (interval - rem);
   }
 
   function scheduleSyncTimer() {
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => {
-      startVideo(0);
-      scheduleSyncTimer();
-    }, msToNextSyncPoint());
+    syncTimer = setTimeout(() => { startVideo(0); scheduleSyncTimer(); }, msToNextSyncPoint());
   }
 
   function scheduleDaily8AMReload() {
-    const now  = new Date();
-    const next = new Date(now);
+    const now = new Date(), next = new Date(now);
     next.setHours(APP_CONFIG.dailyReloadHour, APP_CONFIG.dailyReloadMinute, 0, 0);
     if (next <= now) next.setDate(next.getDate() + 1);
     setTimeout(() => location.reload(true), next - now);
@@ -204,36 +129,24 @@
     const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
     if (fn) fn.call(el).catch(() => {});
   }
-
   const overlay = document.getElementById('overlay');
-  overlay.addEventListener('click',      requestFS);
+  overlay.addEventListener('click', requestFS);
   overlay.addEventListener('touchstart', requestFS, { passive: true });
 
   function startStatusTicker() {
     if (!APP_CONFIG.showStatusBar) return;
     const el = document.getElementById('status');
     setInterval(() => {
-      const now  = new Date();
-      const ms   = msToNextSyncPoint();
-      const m    = Math.floor(ms / 60000);
-      const s    = Math.floor((ms % 60000) / 1000);
-      const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const vid  = PLAYLIST[currentIndex] ? (PLAYLIST[currentIndex].label || `Video ${currentIndex + 1}`) : '—';
-      el.textContent = `${time}  |  ${vid}  |  sync ${m}:${String(s).padStart(2,'0')}`;
+      const now = new Date();
+      const ms  = msToNextSyncPoint();
+      const m   = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+      const vid = PLAYLIST[currentIndex] ? (PLAYLIST[currentIndex].label || `Video ${currentIndex+1}`) : '—';
+      el.textContent = `${now.toLocaleTimeString('vi-VN')}  |  ${vid}  |  sync ${m}:${String(s).padStart(2,'0')}`;
     }, 1000);
   }
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});
-  }
-
-  (function () {
-    const s = document.createElement('script');
-    s.src = 'https://www.youtube.com/iframe_api';
-    s.async = true;
-    document.head.appendChild(s);
-  })();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope:'../' }).catch(()=>{});
+  (function(){ const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; s.async=true; document.head.appendChild(s); })();
   </script>
-
 </body>
 </html>
