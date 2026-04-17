@@ -544,6 +544,11 @@ function addItem() {
   } else if (type === 'gdrive') {
     id = extractDriveId(url);
     if (!id) { toast('Không tìm thấy File ID trong URL Drive', 'error'); return; }
+    if (!dur || parseInt(dur) <= 0) {
+      toast('Google Drive video bắt buộc phải nhập Duration (giây)', 'error');
+      document.getElementById('new-duration').focus();
+      return;
+    }
   } else {
     // image — accept Drive ID or direct URL
     id = url.startsWith('http') ? url : extractDriveId(url);
@@ -797,6 +802,18 @@ async function loadFromGitHub() {
 }
 
 async function saveToGitHub() {
+  // Kiểm tra tất cả gdrive items phải có duration
+  const missing = [];
+  for (const [tab, list] of [['Landscape', playlists.landscape], ['Portrait', playlists.portrait]]) {
+    list.forEach((v, i) => {
+      if (v.type === 'gdrive' && !v.duration) missing.push(`${tab} #${i+1}: "${v.label}"`);
+    });
+  }
+  if (missing.length) {
+    toast(`Google Drive thiếu duration: ${missing.join(', ')}`, 'error');
+    return;
+  }
+
   saveLocalSettings();
   const btn = document.getElementById('btn-save');
   btn.disabled=true; btn.textContent='Đang lưu...';
