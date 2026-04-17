@@ -10,12 +10,12 @@ const PLAYLIST_LANDSCAPE = [
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: 'dAqo0pib06M', label: 'MacBook Neo', regions: ['hcm'] },
-  { id: 'SDzKgqU35Eo', label: 'MacBook Neo' }
+  { id: 'cwZsHxLLlZ0', duration: 15, label: 'Mac Mini' },
+  { id: '_2IV2fu1aAA', duration: 24, label: 'MacBook Neo' }
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 4,
+  syncIntervalMinutes: 5,
   dailyReloadHour: 8,
   dailyReloadMinute: 0,
   showStatusBar: true,
