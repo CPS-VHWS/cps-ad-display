@@ -151,9 +151,22 @@
   overlay.addEventListener('click',      () => isFS() ? exitFS() : enterFS());
   overlay.addEventListener('touchstart', () => isFS() ? exitFS() : enterFS(), { passive:true });
 
-  // Tab trở lại visible → vào fullscreen
+  // Tab trở lại visible → vào fullscreen + resume video nếu bị stuck
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') enterFS();
+    if (document.visibilityState !== 'visible') return;
+    enterFS();
+    const v = PLAYLIST[currentIndex];
+    if (!v) return;
+    if (!v.type || v.type === 'youtube') {
+      if (player && isReady) {
+        const state = player.getPlayerState();
+        if (state === 2) player.playVideo();                    // paused → resume
+        else if (state === 0 || state === -1) startVideo(currentIndex); // ended/unstarted → restart
+      }
+    } else {
+      // gdrive/image: nếu timer đáng lẽ đã hết → skip luôn
+      if (_vidDuration && (Date.now() - _vidStartTime) >= _vidDuration * 1000) playNext();
+    }
   });
 
   // Idle 2 phút không tương tác → vào lại fullscreen
