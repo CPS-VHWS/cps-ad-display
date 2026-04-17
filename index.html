@@ -28,6 +28,8 @@
 
     #overlay { position:fixed; inset:0; z-index:100; cursor:none; background:transparent; }
     #status { position:fixed; bottom:12px; right:14px; color:rgba(255,255,255,0.25); font:11px/1.4 'SF Mono','Consolas',monospace; z-index:200; pointer-events:none; text-align:right; }
+    #mute-btn { position:fixed; bottom:10px; left:12px; z-index:200; background:transparent; border:none; cursor:pointer; opacity:0.25; transition:opacity .2s; padding:4px; }
+    #mute-btn:hover { opacity:0.8; }
     #splash { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:300; transition:opacity 0.6s ease; }
     #splash.hidden { opacity:0; pointer-events:none; }
     #splash-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); animation:pulse 1.2s ease-in-out infinite; }
@@ -43,6 +45,14 @@
   </div>
   <div id="overlay"></div>
   <div id="status"></div>
+  <button id="mute-btn" title="Bật/tắt tiếng">
+    <svg id="icon-sound" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    </svg>
+    <svg id="icon-mute" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+    </svg>
+  </button>
   <script src="config.js"></script>
   <script>
   const PLAYLIST   = PLAYLIST_LANDSCAPE;
@@ -157,6 +167,19 @@
       el.textContent = `${now.toLocaleTimeString('vi-VN')} | ${vid} | sync ${Math.floor(ms/60000)}:${String(Math.floor((ms%60000)/1000)).padStart(2,'0')}`;
     }, 1000);
   }
+
+  // Nút loa — bật/tắt tiếng YouTube player
+  let _muted = true;
+  function updateMuteIcon() {
+    document.getElementById('icon-sound').style.display = _muted ? 'none' : 'block';
+    document.getElementById('icon-mute').style.display  = _muted ? 'block' : 'none';
+  }
+  document.getElementById('mute-btn').addEventListener('click', e => {
+    e.stopPropagation(); // không trigger overlay
+    _muted = !_muted;
+    if (player && isReady) { _muted ? player.mute() : player.unMute(); }
+    updateMuteIcon();
+  });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   (function(){ const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; s.async=true; document.head.appendChild(s); })();
