@@ -262,6 +262,7 @@
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-hn" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-hcm').checked)?'inline':'none'" style="width:auto;margin:0;"> HN</label>
         <span class="tag-sep">·</span>
         <select id="new-campaign" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 10px;outline:none;"><option value="">— Luôn chạy</option></select>
+        <label id="new-skip-end-wrap" style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-skip-end" style="width:auto;margin:0;"> ✂ Ẩn end screen</label>
         <span id="new-region-warn" style="font-size:11px;color:var(--danger);display:none;">⚠ Không khu vực nào → video sẽ không chạy</span>
       </div>
     </div>
@@ -474,6 +475,7 @@ function onTypeChange() {
     note.textContent = '— mặc định 5s'; note.style.color = 'var(--muted)';
   }
   document.getElementById('new-thumb').style.display = 'none';
+  document.getElementById('new-skip-end-wrap').style.display = (type === 'youtube') ? 'flex' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -583,6 +585,7 @@ function render() {
             <option value="">— Luôn chạy</option>
             ${campOpts}
           </select>
+          ${isYT ? `<span class="tag-sep">·</span><label class="region-chk" title="Tự động bỏ qua ~20s cuối để ẩn playlist đề xuất YouTube"><input type="checkbox" onchange="updateSkipEnd('${activeTab}',${i},this.checked)" ${v.skipEnd?'checked':''}> ✂ end screen</label>` : ''}
         </div>
       </div>
       <div class="video-actions">
@@ -665,6 +668,7 @@ function addItem() {
   if (!rHcm || !rHn) entry.regions = [...(rHcm?['hcm']:[]),...(rHn?['hn']:[])];
   const camp = document.getElementById('new-campaign').value;
   if (camp) entry.campaign = camp;
+  if (type === 'youtube' && document.getElementById('new-skip-end').checked) entry.skipEnd = true;
   playlists[activeTab].push(entry);
 
   document.getElementById('new-url').value      = '';
@@ -675,6 +679,7 @@ function addItem() {
   document.getElementById('new-region-hn').checked          = true;
   document.getElementById('new-region-warn').style.display  = 'none';
   document.getElementById('new-campaign').value              = '';
+  document.getElementById('new-skip-end').checked            = false;
   markDirty(true);
   render();
   updateDurSummary();
@@ -694,6 +699,10 @@ function updateRegion(tab, i, region, checked) {
   if (!checked) regions = regions.filter(r => r !== region);
   regions.sort();
   if (regions.length === 2) delete v.regions; else v.regions = regions;
+  markDirty(true); render();
+}
+function updateSkipEnd(tab, i, checked) {
+  if (checked) playlists[tab][i].skipEnd = true; else delete playlists[tab][i].skipEnd;
   markDirty(true); render();
 }
 function updateCampaign(tab, i, val) {
@@ -913,6 +922,7 @@ function buildConfigJs() {
       if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${r}'`).join(', ')}]`);
     }
     if (v.campaign) parts.push(`campaign: '${v.campaign}'`);
+    if (v.skipEnd)  parts.push(`skipEnd: true`);
     return `  { ${parts.join(', ')} }`;
   }
   const ls = playlists.landscape.map(row).join(',\n') || '  // trống';
