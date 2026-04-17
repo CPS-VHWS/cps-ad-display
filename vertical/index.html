@@ -123,6 +123,15 @@
       _muted ? player.mute() : player.unMute();
       const fallbackMs = v.duration ? (v.duration + 15) * 1000 : 15 * 60 * 1000;
       autoTimer = setTimeout(playNext, fallbackMs);
+      clearInterval(ytWatchdog);
+      if (v.skipEnd) {
+        ytWatchdog = setInterval(() => {
+          if (!player || !isReady || player.getPlayerState() !== 1) return;
+          const dur = player.getDuration(), cur = player.getCurrentTime();
+          const skipAt = Math.min(20, Math.max(2, dur * 0.15));
+          if (dur > 0 && (dur - cur) <= skipAt) { clearInterval(ytWatchdog); playNext(); }
+        }, 500);
+      }
     }
   }
 

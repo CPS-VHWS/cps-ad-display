@@ -523,9 +523,9 @@ function render() {
   const usedCamp = [...new Set([...playlists.landscape,...playlists.portrait].map(v=>v.campaign).filter(Boolean))];
   const allCamp  = [...new Set([...campList,...usedCamp])];
   const fcEl = document.getElementById('filter-campaign');
-  if (fcEl) { const cur=fcEl.value; fcEl.innerHTML=`<option value="">Tất cả chương trình</option>`+allCamp.map(c=>`<option value="${c}"${cur===c?' selected':''}>${c}</option>`).join(''); }
+  if (fcEl) { const cur=fcEl.value; fcEl.innerHTML=`<option value="">Tất cả chương trình</option>`+allCamp.map(c=>`<option value="${escHtml(c)}"${cur===c?' selected':''}>${escHtml(c)}</option>`).join(''); }
   const ncEl = document.getElementById('new-campaign');
-  if (ncEl) { const cur=ncEl.value; ncEl.innerHTML=`<option value="">— Luôn chạy</option>`+allCamp.map(c=>`<option value="${c}"${cur===c?' selected':''}>${c}</option>`).join(''); }
+  if (ncEl) { const cur=ncEl.value; ncEl.innerHTML=`<option value="">— Luôn chạy</option>`+allCamp.map(c=>`<option value="${escHtml(c)}"${cur===c?' selected':''}>${escHtml(c)}</option>`).join(''); }
 
   // Apply preview filters
   const fR = document.getElementById('filter-region')?.value  || '';
@@ -563,7 +563,7 @@ function render() {
     const hcmChk    = !v.regions || v.regions.includes('hcm') ? 'checked' : '';
     const hnChk     = !v.regions || v.regions.includes('hn')  ? 'checked' : '';
     const noRegWarn = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
-    const campOpts  = getCampaignList().map(c=>`<option value="${c}"${v.campaign===c?' selected':''}>${c}</option>`).join('');
+    const campOpts  = getCampaignList().map(c=>`<option value="${escHtml(c)}"${v.campaign===c?' selected':''}>${escHtml(c)}</option>`).join('');
     return `<div class="video-card${dragSrc && dragSrc.tab===activeTab && dragSrc.i===i ? ' dragging' : ''}"
         draggable="${!isFiltered}"
         ondragstart="${!isFiltered?`onDragStart('${activeTab}',${i},event)`:''}"
@@ -909,7 +909,7 @@ function downloadSampleCSV() {
 // ═══════════════════════════════════════════════════════════════
 function buildConfigJs() {
   const syncMin    = parseInt(document.getElementById('cfg-sync').value) || 5;
-  const reloadHour = parseInt(document.getElementById('cfg-reload-hour').value) ?? 8;
+  const reloadHour = parseInt(document.getElementById('cfg-reload-hour').value) || 8;
   const showStatus = document.getElementById('cfg-status').checked;
   const campList   = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
