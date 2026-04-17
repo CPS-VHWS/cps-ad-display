@@ -122,7 +122,8 @@
       ytWatchdog = setInterval(() => {
         if (!player || !isReady || player.getPlayerState() !== 1) return;
         const dur = player.getDuration(), cur = player.getCurrentTime();
-        if (dur > 0 && (dur - cur) <= 2) { clearInterval(ytWatchdog); playNext(); }
+        const skipAt = Math.min(20, Math.max(2, dur * 0.15));
+        if (dur > 0 && (dur - cur) <= skipAt) { clearInterval(ytWatchdog); playNext(); }
       }, 500);
     }
   }
