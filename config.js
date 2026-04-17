@@ -4,9 +4,9 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: 'qUfVSh4eaDE', label: 'MacBook Neo' },
-  { id: 'bg3iEHHTGtQ', label: 'MacBook Neo' },
-  { id: '-ueUb6PNwbs', duration: 96, label: 'Design is how it works' }
+  { id: '-ueUb6PNwbs', duration: 96, label: 'Design is how it works' },
+  { id: 'qUfVSh4eaDE', duration: 107, label: 'Apple Education' },
+  { id: 'bg3iEHHTGtQ', duration: 36, label: 'MacBook Neo' }
 ];
 
 const PLAYLIST_PORTRAIT = [
@@ -15,7 +15,7 @@ const PLAYLIST_PORTRAIT = [
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 2,
+  syncIntervalMinutes: 4,
   dailyReloadHour: 8,
   dailyReloadMinute: 0,
   showStatusBar: true,
