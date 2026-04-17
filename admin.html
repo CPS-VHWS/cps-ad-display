@@ -176,6 +176,23 @@
     <button class="btn btn-secondary btn-sm" onclick="loadFromGitHub()">↓ Tải playlist từ GitHub</button>
   </div>
 
+  <!-- Campaigns -->
+  <h2>Chương trình (Campaign)</h2>
+  <div class="panel" style="margin-bottom:20px;">
+    <div id="campaign-chips" style="display:flex;gap:6px;flex-wrap:wrap;min-height:28px;margin-bottom:12px;">
+      <span style="color:var(--muted);font-size:12px;">Chưa có chương trình nào.</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <input id="new-campaign-input" type="text" placeholder="Tên chương trình (vd: edu)" style="flex:1;"
+             onkeydown="if(event.key==='Enter'){addCampaign();event.preventDefault();}">
+      <button class="btn btn-secondary btn-sm" onclick="addCampaign()">+ Thêm</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+      URL thiết bị: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">/?r=hcm&amp;c=edu</code>
+      &nbsp;·&nbsp; Video không gán campaign → luôn chạy ở mọi thiết bị
+    </div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active-landscape" id="tab-landscape" onclick="switchTab('landscape')">▬ Ngang (Landscape) <span class="tab-badge" id="badge-landscape">0</span></div>
@@ -276,10 +293,6 @@
       <input id="cfg-status" type="checkbox" checked>
       <label style="margin:0;cursor:pointer;" for="cfg-status">Hiện thanh trạng thái</label>
     </div>
-    <div class="field" style="margin-top:12px;">
-      <label>Danh sách Campaign <span style="font-weight:400;color:var(--muted);font-size:11px;">— cách nhau bởi dấu phẩy</span></label>
-      <input id="cfg-campaigns" type="text" placeholder="edu, b2b, summer2025" oninput="render()">
-    </div>
   </div>
 
   <!-- Save -->
@@ -306,9 +319,10 @@
 // ═══════════════════════════════════════════════════════════════
 let playlists         = { landscape:[], portrait:[] };
 let snapshotPlaylists = null; // bản copy lúc load từ GitHub, dùng để tính diff
-let activeTab = 'landscape';
-let dirty     = false;
-let dragSrc   = null;
+let activeTab    = 'landscape';
+let dirty        = false;
+let dragSrc      = null;
+let campaignList = [];
 
 // ═══════════════════════════════════════════════════════════════
 //  PIN
@@ -670,9 +684,38 @@ function updateCampaign(tab, i, val) {
   if (val) playlists[tab][i].campaign = val; else delete playlists[tab][i].campaign;
   markDirty(true); render();
 }
-function getCampaignList() {
-  const val = document.getElementById('cfg-campaigns')?.value || '';
-  return val.split(',').map(s => s.trim()).filter(Boolean);
+function getCampaignList() { return campaignList; }
+
+function addCampaign() {
+  const input = document.getElementById('new-campaign-input');
+  const name  = input.value.trim().toLowerCase().replace(/\s+/g, '-');
+  if (!name) return;
+  if (campaignList.includes(name)) { toast('Campaign đã tồn tại', 'error'); return; }
+  campaignList.push(name);
+  input.value = '';
+  renderCampaignChips();
+  render();
+  markDirty(true);
+}
+function removeCampaign(name) {
+  campaignList = campaignList.filter(c => c !== name);
+  renderCampaignChips();
+  render();
+  markDirty(true);
+}
+function renderCampaignChips() {
+  const el = document.getElementById('campaign-chips');
+  if (!el) return;
+  if (!campaignList.length) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:12px;">Chưa có chương trình nào.</span>';
+    return;
+  }
+  el.innerHTML = campaignList.map(c =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.3);color:var(--accent);border-radius:20px;padding:3px 12px 3px 10px;font-size:12px;font-weight:500;">
+      ${c}
+      <button onclick="removeCampaign('${c}')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font-size:15px;line-height:1;opacity:.6;margin-left:2px;" title="Xoá">×</button>
+    </span>`
+  ).join('');
 }
 function clearFilters() {
   const fr = document.getElementById('filter-region');
@@ -808,7 +851,7 @@ function buildConfigJs() {
   const syncMin    = parseInt(document.getElementById('cfg-sync').value) || 5;
   const reloadHour = parseInt(document.getElementById('cfg-reload-hour').value) ?? 8;
   const showStatus = document.getElementById('cfg-status').checked;
-  const campList   = getCampaignList();
+  const campList   = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
 
@@ -904,7 +947,7 @@ async function loadFromGitHub() {
       document.getElementById('cfg-sync').value        = cfg.syncIntervalMinutes ?? 5;
       document.getElementById('cfg-reload-hour').value = cfg.dailyReloadHour ?? 8;
       document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
-      if (cfg.campaigns?.length) document.getElementById('cfg-campaigns').value = cfg.campaigns.join(', ');
+      if (cfg.campaigns?.length) { campaignList = cfg.campaigns; renderCampaignChips(); }
     }
     snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
     markDirty(false); render();
