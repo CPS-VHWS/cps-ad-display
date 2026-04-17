@@ -10,7 +10,7 @@ const PLAYLIST_LANDSCAPE = [
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: 'dAqo0pib06M', label: 'MacBook Neo' },
+  { id: 'dAqo0pib06M', label: 'MacBook Neo', regions: ['hcm'] },
   { id: 'SDzKgqU35Eo', label: 'MacBook Neo' }
 ];
 
