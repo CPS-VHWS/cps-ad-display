@@ -1,5 +1,11 @@
 [
   {
+    "ts": 1776413210014,
+    "changes": [
+      "Portrait ~Regions \"MacBook Neo\": All -> HCM"
+    ]
+  },
+  {
     "ts": 1776412306824,
     "changes": [
       "Landscape ~Regions \"Design is how it works\": HCM -> All"
