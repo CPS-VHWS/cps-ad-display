@@ -1,13 +1,19 @@
 [
   {
+    "ts": 1776411036346,
+    "changes": [
+      "Landscape ~Campaign \"Design is how it works\": (always) -> test2"
+    ]
+  },
+  {
     "ts": 1776397117193,
     "changes": [
-      "Ngang ↕Di chuyển \"Design is how it works\" từ #3 → #1",
-      "Ngang ↕Di chuyển \"Apple Education\" từ #1 → #2",
-      "Ngang ✎Đổi tên \"MacBook Neo\" → \"Apple Education\"",
-      "Ngang ✎Cập nhật duration \"Apple Education\": —s → 107s",
-      "Ngang ↕Di chuyển \"MacBook Neo\" từ #2 → #3",
-      "Ngang ✎Cập nhật duration \"MacBook Neo\": —s → 36s"
+      "Ngang âDi chuyá»n \"Design is how it works\" tá»« #3 â #1",
+      "Ngang âDi chuyá»n \"Apple Education\" tá»« #1 â #2",
+      "Ngang âÄá»i tÃªn \"MacBook Neo\" â \"Apple Education\"",
+      "Ngang âCáº­p nháº­t duration \"Apple Education\": âs â 107s",
+      "Ngang âDi chuyá»n \"MacBook Neo\" tá»« #2 â #3",
+      "Ngang âCáº­p nháº­t duration \"MacBook Neo\": âs â 36s"
     ]
   }
 ]
