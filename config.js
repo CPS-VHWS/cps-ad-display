@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: '-ueUb6PNwbs', duration: 96, label: 'Design is how it works', campaign: 'test2' },
+  { id: '-ueUb6PNwbs', duration: 96, label: 'Design is how it works', regions: ['hcm'], campaign: 'test2' },
   { id: 'qUfVSh4eaDE', duration: 107, label: 'Apple Education' },
   { id: 'bg3iEHHTGtQ', duration: 36, label: 'MacBook Neo' }
 ];
