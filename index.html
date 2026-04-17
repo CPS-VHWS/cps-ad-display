@@ -56,7 +56,7 @@
   <script src="config.js"></script>
   <script>
   const PLAYLIST   = PLAYLIST_LANDSCAPE;
-  let player = null, currentIndex = 0, isReady = false, syncTimer = null, autoTimer = null;
+  let player = null, currentIndex = 0, isReady = false, syncTimer = null, autoTimer = null, ytWatchdog = null;
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
@@ -105,10 +105,17 @@
       _muted ? player.mute() : player.unMute();
       const fallbackMs = v.duration ? (v.duration + 15) * 1000 : 15 * 60 * 1000;
       autoTimer = setTimeout(playNext, fallbackMs);
+      // Watchdog: chuyển video trước 2 giây để tránh hiện end screen YouTube
+      clearInterval(ytWatchdog);
+      ytWatchdog = setInterval(() => {
+        if (!player || !isReady || player.getPlayerState() !== 1) return;
+        const dur = player.getDuration(), cur = player.getCurrentTime();
+        if (dur > 0 && (dur - cur) <= 2) { clearInterval(ytWatchdog); playNext(); }
+      }, 500);
     }
   }
 
-  function playNext() { startVideo(currentIndex + 1); }
+  function playNext() { clearInterval(ytWatchdog); startVideo(currentIndex + 1); }
 
   function msToNextSyncPoint() {
     const now = new Date(), interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
