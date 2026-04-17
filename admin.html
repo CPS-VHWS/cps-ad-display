@@ -774,6 +774,10 @@ function copyUrl(id) {
   });
 }
 
+window.addEventListener('beforeunload', e => {
+  if (dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
 function markDirty(val) {
   dirty = val;
   const total = playlists.landscape.length + playlists.portrait.length;

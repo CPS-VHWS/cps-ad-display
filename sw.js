@@ -4,13 +4,13 @@
 //  Không cache YouTube stream (luôn lấy trực tiếp từ mạng).
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ad-display-v1';
+const CACHE_NAME = 'ad-display-v2';
 
 // Chỉ cache các file shell của ứng dụng
 const SHELL_ASSETS = [
   './index.html',
   './manifest.json',
-  // config.js KHÔNG cache — luôn lấy mới nhất từ network để nhận playlist update
+  // config.js không pre-cache — luôn lấy mới nhất từ network, cache lại để dùng offline
 ];
 
 // ── Install: pre-cache shell ────────────────────────────────────
@@ -45,9 +45,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // config.js: luôn lấy từ network (không cache)
+  // config.js: network-first, cache theo canonical URL (bỏ query param từ poll request)
+  // → khi offline phục vụ config cũ nhất đã lấy được
   if (url.includes('config.js')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    const canonicalUrl = url.split('?')[0];
+    event.respondWith(
+      fetch(event.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(canonicalUrl, clone));
+          return res;
+        })
+        .catch(() => caches.match(canonicalUrl))
+    );
     return;
   }
 
