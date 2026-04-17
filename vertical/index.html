@@ -216,7 +216,8 @@
       const vid = PLAYLIST[currentIndex] ? (PLAYLIST[currentIndex].label || `Video ${currentIndex+1}`) : '—';
       const rem = getVideoRemaining();
       const vidPart = rem !== null ? `${vid} ${fmtSec(rem)}` : vid;
-      el.textContent = `${now.toLocaleTimeString('vi-VN')} | ${vidPart} | sync ${fmtSec(ms/1000)}`;
+      const ctx = [_region, _campaign].filter(Boolean).join(' · ');
+      el.textContent = `${now.toLocaleTimeString('vi-VN')} | ${vidPart} | sync ${fmtSec(ms/1000)}${ctx ? ' | ' + ctx : ''}`;
     }, 1000);
   }
 
