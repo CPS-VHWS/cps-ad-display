@@ -9,8 +9,8 @@ const CACHE_NAME = 'ad-display-v1';
 // Chỉ cache các file shell của ứng dụng
 const SHELL_ASSETS = [
   './index.html',
-  './config.js',
   './manifest.json',
+  // config.js KHÔNG cache — luôn lấy mới nhất từ network để nhận playlist update
 ];
 
 // ── Install: pre-cache shell ────────────────────────────────────
@@ -42,6 +42,12 @@ self.addEventListener('fetch', event => {
   // YouTube API & stream: luôn lấy từ mạng
   if (url.includes('youtube.com') || url.includes('ytimg.com') || url.includes('googlevideo.com')) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // config.js: luôn lấy từ network (không cache)
+  if (url.includes('config.js')) {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
 

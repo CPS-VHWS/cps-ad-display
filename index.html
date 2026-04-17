@@ -92,6 +92,10 @@
       document.getElementById('yt-player').style.display = 'block';
       if (!isReady || !player) return;
       player.loadVideoById({ videoId: v.id }); player.mute();
+      // Fallback: nếu onStateChange không fire (bị block, mạng chậm...) → tự chuyển sau duration + 15s
+      // Nếu không có duration thì fallback 15 phút để tránh treo màn hình
+      const fallbackMs = v.duration ? (v.duration + 15) * 1000 : 15 * 60 * 1000;
+      autoTimer = setTimeout(playNext, fallbackMs);
     }
   }
 

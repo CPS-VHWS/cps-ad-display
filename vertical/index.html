@@ -91,6 +91,9 @@
       document.getElementById('yt-player').style.display = 'block';
       if (!isReady || !player) return;
       player.loadVideoById({ videoId: v.id }); player.mute();
+      // Fallback: nếu onStateChange không fire → tự chuyển sau duration + 15s (hoặc 15 phút nếu không có duration)
+      const fallbackMs = v.duration ? (v.duration + 15) * 1000 : 15 * 60 * 1000;
+      autoTimer = setTimeout(playNext, fallbackMs);
     }
   }
 

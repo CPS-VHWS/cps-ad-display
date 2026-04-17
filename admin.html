@@ -369,7 +369,7 @@ function setupIdleRedirect() {
     idleTimer = setTimeout(startCountdown, IDLE_MS - 30000);
   }
 
-  ['mousemove','keydown','touchstart','click','scroll'].forEach(e =>
+  ['mousemove','keydown','keyup','touchstart','click','scroll','input','change'].forEach(e =>
     document.addEventListener(e, reset, { passive:true })
   );
   reset();
