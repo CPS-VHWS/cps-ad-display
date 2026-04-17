@@ -213,6 +213,21 @@
     <span id="filter-info" style="font-size:12px;color:var(--accent);"></span>
   </div>
 
+  <!-- URL copy box -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;">🔗 URL thiết bị</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <span style="font-size:11px;color:var(--muted);min-width:36px;">Ngang</span>
+      <code id="url-landscape" style="flex:1;background:var(--surface2);padding:4px 8px;border-radius:5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);"></code>
+      <button onclick="copyUrl('url-landscape')" class="btn btn-secondary btn-sm">Copy</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:11px;color:var(--muted);min-width:36px;">Dọc</span>
+      <code id="url-portrait" style="flex:1;background:var(--surface2);padding:4px 8px;border-radius:5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);"></code>
+      <button onclick="copyUrl('url-portrait')" class="btn btn-secondary btn-sm">Copy</button>
+    </div>
+  </div>
+
   <!-- Playlist -->
   <div id="playlist-container"></div>
 
@@ -518,6 +533,7 @@ function render() {
   });
   const fi = document.getElementById('filter-info');
   if (fi) fi.textContent = isFiltered ? `→ ${viewList.length}/${pl.length} video` : '';
+  updateUrlBox();
 
   if (!pl.length) {
     con.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0 16px;">Playlist trống — thêm mục bên dưới.</div>`;
@@ -723,6 +739,27 @@ function clearFilters() {
   if (fr) fr.value = '';
   if (fc) fc.value = '';
   render();
+}
+function updateUrlBox() {
+  const fR = document.getElementById('filter-region')?.value  || '';
+  const fC = document.getElementById('filter-campaign')?.value || '';
+  const params = new URLSearchParams();
+  if (fR) params.set('r', fR);
+  if (fC) params.set('c', fC);
+  const qs   = params.toString() ? '?' + params.toString() : '';
+  const base = DISPLAY_URL.replace(/\/$/, '');
+  document.getElementById('url-landscape').textContent = base + '/' + qs;
+  document.getElementById('url-portrait').textContent  = base + '/vertical/' + qs;
+}
+function copyUrl(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Đã copy!', 'success')).catch(() => {
+    const el = document.getElementById(id);
+    const range = document.createRange(); range.selectNode(el);
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+    document.execCommand('copy'); window.getSelection().removeAllRanges();
+    toast('Đã copy!', 'success');
+  });
 }
 
 function markDirty(val) {
@@ -1052,7 +1089,7 @@ async function appendChangelog(changes) {
   try {
     const data = await ghFetch('changelog.json');
     sha = data.sha;
-    existing = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    existing = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
   } catch(e) { /* file chưa tồn tại */ }
   existing.unshift({ ts: Date.now(), changes });
   if (existing.length > 200) existing = existing.slice(0, 200);
@@ -1075,7 +1112,7 @@ async function loadChangelog() {
     });
     if (!res.ok) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:6px 0;">Chưa có lịch sử. Lưu lần đầu để bắt đầu ghi.</div>'; return; }
     const data = await res.json();
-    const entries = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    const entries = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
     renderChangelog(entries);
   } catch(e) { el.innerHTML = `<div style="color:var(--danger);font-size:13px;">${e.message}</div>`; }
 }
