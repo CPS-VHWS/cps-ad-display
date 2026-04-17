@@ -829,27 +829,24 @@ function diffTab(oldList, newList, tabLabel) {
   const changes = [];
   const oldById = new Map(oldList.map((v,i) => [v.id, {...v, pos:i+1}]));
   const newById = new Map(newList.map((v,i) => [v.id, {...v, pos:i+1}]));
-  // Thêm mới
   for (const [id,nv] of newById) {
     if (!oldById.has(id)) {
-      const t = nv.type==='gdrive' ? 'Google Drive' : nv.type==='image' ? 'Hình ảnh' : 'YouTube';
-      changes.push(`${tabLabel} +Thêm "${nv.label}" (${t}) vào vị trí #${nv.pos}`);
+      const t = nv.type==='gdrive' ? 'Google Drive' : nv.type==='image' ? 'Image' : 'YouTube';
+      changes.push(`${tabLabel} +Added "${nv.label}" (${t}) at #${nv.pos}`);
     }
   }
-  // Xoá
   for (const [id,ov] of oldById) {
-    if (!newById.has(id)) changes.push(`${tabLabel} −Xoá "${ov.label}" (vị trí #${ov.pos})`);
+    if (!newById.has(id)) changes.push(`${tabLabel} -Removed "${ov.label}" (was #${ov.pos})`);
   }
-  // Di chuyển / đổi tên / đổi duration
   for (const [id,nv] of newById) {
     if (!oldById.has(id)) continue;
     const ov = oldById.get(id);
     if (ov.pos !== nv.pos)
-      changes.push(`${tabLabel} ↕Di chuyển "${nv.label}" từ #${ov.pos} → #${nv.pos}`);
+      changes.push(`${tabLabel} ^Moved "${nv.label}" #${ov.pos} -> #${nv.pos}`);
     if ((ov.label||'') !== (nv.label||''))
-      changes.push(`${tabLabel} ✎Đổi tên "${ov.label}" → "${nv.label}"`);
+      changes.push(`${tabLabel} ~Renamed "${ov.label}" -> "${nv.label}"`);
     if (ov.duration !== nv.duration)
-      changes.push(`${tabLabel} ✎Cập nhật duration "${nv.label}": ${ov.duration||'—'}s → ${nv.duration||'—'}s`);
+      changes.push(`${tabLabel} ~Duration "${nv.label}": ${ov.duration||'--'}s -> ${nv.duration||'--'}s`);
   }
   return changes;
 }
@@ -857,8 +854,8 @@ function diffTab(oldList, newList, tabLabel) {
 function buildChangelogDiff() {
   if (!snapshotPlaylists) return [];
   return [
-    ...diffTab(snapshotPlaylists.landscape, playlists.landscape, 'Ngang'),
-    ...diffTab(snapshotPlaylists.portrait,  playlists.portrait,  'Dọc'),
+    ...diffTab(snapshotPlaylists.landscape, playlists.landscape, 'Landscape'),
+    ...diffTab(snapshotPlaylists.portrait,  playlists.portrait,  'Portrait'),
   ];
 }
 
@@ -898,17 +895,17 @@ async function loadChangelog() {
 function renderChangelog(entries) {
   const el = document.getElementById('changelog-list');
   if (!entries||!entries.length) { el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0;">Chưa có lịch sử.</div>'; return; }
-  const iconColor = { '+':'#6de8a0', '−':'#e05252', '↕':'#90b8f8', '✎':'#f0c070' };
+  const iconColor = { '+':'#6de8a0', '-':'#e05252', '^':'#90b8f8', '~':'#f0c070' };
   el.innerHTML = entries.map(entry => {
     const dateStr = new Date(entry.ts).toLocaleString('vi-VN');
     const lines = entry.changes.map(c => {
-      const m = c.match(/^(Ngang|Dọc)\s([+−↕✎])(.*)/);
+      const m = c.match(/^(Landscape|Portrait)\s([+\-^~])(.*)/);
       if (!m) return `<div style="font-size:12px;color:var(--muted);margin-top:3px;">${c}</div>`;
       const [,tab,icon,text] = m;
       const color = iconColor[icon]||'var(--text)';
-      const badge = tab==='Ngang'
-        ? `<span style="font-size:10px;background:rgba(79,110,247,.15);color:var(--landscape);border-radius:4px;padding:1px 5px;">▬ Ngang</span>`
-        : `<span style="font-size:10px;background:rgba(176,110,247,.15);color:var(--portrait);border-radius:4px;padding:1px 5px;">▮ Dọc</span>`;
+      const badge = tab==='Landscape'
+        ? `<span style="font-size:10px;background:rgba(79,110,247,.15);color:var(--landscape);border-radius:4px;padding:1px 5px;">▬ Landscape</span>`
+        : `<span style="font-size:10px;background:rgba(176,110,247,.15);color:var(--portrait);border-radius:4px;padding:1px 5px;">▮ Portrait</span>`;
       return `<div style="display:flex;align-items:baseline;gap:6px;margin-top:5px;">
         <span style="font-size:13px;font-weight:700;color:${color};min-width:14px;line-height:1;">${icon}</span>
         ${badge}
