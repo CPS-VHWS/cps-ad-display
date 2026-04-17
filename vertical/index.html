@@ -14,7 +14,13 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width:100%; height:100%; background:#000; overflow:hidden; cursor:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-    #player-wrap { position:fixed; inset:0; overflow:hidden; background:#000; }
+    #player-wrap {
+      position:fixed;
+      top: 0; left: 0; right: 0;
+      bottom: 0;
+      bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+      overflow:hidden; background:#000;
+    }
 
     /* Cover — portrait (9:16) */
     #yt-player, #gd-player {
