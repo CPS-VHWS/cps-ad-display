@@ -261,8 +261,8 @@
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div>
         <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Import CSV</div>
-        <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">type, id, label, duration</code></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;">type: youtube / gdrive / image &nbsp;·&nbsp; duration: giây</div>
+        <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">type, id, label, duration, regions, campaign</code></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">regions: hcm / hn / hcm+hn (trống = tất cả) &nbsp;·&nbsp; campaign: tên chương trình (trống = luôn chạy)</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-secondary btn-sm" onclick="downloadSampleCSV()">↓ File mẫu</button>
@@ -825,7 +825,18 @@ function importCSV() {
           const dur  = parseInt(row[col('duration')]) || null;
           if (!id) continue;
           if (playlists[activeTab].some(v => v.id === id)) continue;
-          const entry = { id, type, label: lbl }; if (dur) entry.duration = dur;
+          const entry = { id, type, label: lbl };
+          if (dur) entry.duration = dur;
+          // regions: cột "regions" — giá trị: hcm / hn / hcm+hn (hoặc để trống = tất cả)
+          const regRaw = col('regions') >= 0 ? (row[col('regions')] || '') : '';
+          if (regRaw) {
+            const parsed = regRaw.toLowerCase().split('+').map(s=>s.trim()).filter(Boolean);
+            const isAll  = parsed.includes('hcm') && parsed.includes('hn');
+            if (!isAll) entry.regions = parsed;
+          }
+          // campaign
+          const camp = col('campaign') >= 0 ? (row[col('campaign')] || '') : '';
+          if (camp) entry.campaign = camp.toLowerCase();
           playlists[activeTab].push(entry); added++;
         }
         markDirty(true); render();
@@ -838,7 +849,7 @@ function importCSV() {
 }
 
 function downloadSampleCSV() {
-  const csv = `type,id,label,duration\nyoutube,dQw4w9WgXcQ,Video quảng cáo 1,213\ngdrive,1A2B3C4D5E6F7G8H9I0J,Video Drive 1,90\nimage,1A2B3C4D5E6F7G8H9I0J,Banner hình ảnh,5\n`;
+  const csv = `type,id,label,duration,regions,campaign\nyoutube,dQw4w9WgXcQ,Video thuong hieu,213,,\nyoutube,xxxxxxxxxxx,Video chuong trinh edu,180,hcm,edu\ngdrive,1A2B3C4D5E6F7G8H9I0J,Video Drive HN,90,hn,\nimage,1A2B3C4D5E6F7G8H9I0J,Banner ca nuoc,5,hcm+hn,\n`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'playlist-sample.csv'; a.click();
