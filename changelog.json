@@ -1,5 +1,14 @@
 [
   {
+    "ts": 1776415067638,
+    "changes": [
+      "Portrait +Added \"Mac Mini\" (YouTube) at #1",
+      "Portrait +Added \"MacBook Neo\" (YouTube) at #2",
+      "Portrait -Removed \"MacBook Neo\" (was #1)",
+      "Portrait -Removed \"MacBook Neo\" (was #2)"
+    ]
+  },
+  {
     "ts": 1776413210014,
     "changes": [
       "Portrait ~Regions \"MacBook Neo\": All -> HCM"
