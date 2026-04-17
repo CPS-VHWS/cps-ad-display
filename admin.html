@@ -78,6 +78,13 @@
     .badge-drive { background:rgba(66,133,244,.15); color:#6ba3ff; }
     .badge-img   { background:rgba(80,200,120,.15); color:#6de8a0; }
     .warn { color:var(--danger); font-size:10px; }
+    .video-tags { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+    .region-chk { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; }
+    .region-chk input { width:auto; cursor:pointer; accent-color:var(--accent); margin:0; }
+    .region-none { font-size:10px; color:var(--danger); }
+    .tag-sep { color:var(--border); font-size:11px; }
+    .campaign-sel { background:var(--surface2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:11px; padding:2px 6px; cursor:pointer; width:auto; outline:none; }
+    .campaign-sel:focus { border-color:var(--accent); }
 
     .video-actions { display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
     .order-btns { display:flex; gap:4px; }
@@ -175,6 +182,20 @@
     <div class="tab" id="tab-portrait"  onclick="switchTab('portrait')">▮ Dọc (Portrait) <span class="tab-badge" id="badge-portrait">0</span></div>
   </div>
 
+  <!-- Filter bar — preview what a device would see -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <span style="font-size:12px;color:var(--muted);">🔍 Xem trước:</span>
+    <select id="filter-region" onchange="render()" style="width:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;">
+      <option value="">Tất cả khu vực</option>
+      <option value="hcm">HCM</option>
+      <option value="hn">HN</option>
+    </select>
+    <select id="filter-campaign" onchange="render()" style="width:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;">
+      <option value="">Tất cả chương trình</option>
+    </select>
+    <span id="filter-info" style="font-size:12px;color:var(--accent);"></span>
+  </div>
+
   <!-- Playlist -->
   <div id="playlist-container"></div>
 
@@ -200,6 +221,16 @@
       <div class="field">
         <label>Thời lượng (giây) <span id="dur-note" style="color:var(--accent);font-size:10px;">— tự lấy sau</span></label>
         <input id="new-duration" type="number" placeholder="5" min="1">
+      </div>
+    </div>
+    <div class="field">
+      <label>Khu vực & Chương trình</label>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-hcm" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-hn').checked)?'inline':'none'" style="width:auto;margin:0;"> HCM</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-hn" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-hcm').checked)?'inline':'none'" style="width:auto;margin:0;"> HN</label>
+        <span class="tag-sep">·</span>
+        <select id="new-campaign" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 10px;outline:none;"><option value="">— Luôn chạy</option></select>
+        <span id="new-region-warn" style="font-size:11px;color:var(--danger);display:none;">⚠ Không khu vực nào → video sẽ không chạy</span>
       </div>
     </div>
     <div class="btn-row">
@@ -244,6 +275,10 @@
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
       <input id="cfg-status" type="checkbox" checked>
       <label style="margin:0;cursor:pointer;" for="cfg-status">Hiện thanh trạng thái</label>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label>Danh sách Campaign <span style="font-weight:400;color:var(--muted);font-size:11px;">— cách nhau bởi dấu phẩy</span></label>
+      <input id="cfg-campaigns" type="text" placeholder="edu, b2b, summer2025" oninput="render()">
     </div>
   </div>
 
@@ -449,12 +484,37 @@ function render() {
   document.getElementById('badge-landscape').textContent = playlists.landscape.length;
   document.getElementById('badge-portrait').textContent  = playlists.portrait.length;
 
+  // Sync campaign dropdowns (filter bar + add form)
+  const campList = getCampaignList();
+  const usedCamp = [...new Set([...playlists.landscape,...playlists.portrait].map(v=>v.campaign).filter(Boolean))];
+  const allCamp  = [...new Set([...campList,...usedCamp])];
+  const fcEl = document.getElementById('filter-campaign');
+  if (fcEl) { const cur=fcEl.value; fcEl.innerHTML=`<option value="">Tất cả chương trình</option>`+allCamp.map(c=>`<option value="${c}"${cur===c?' selected':''}>${c}</option>`).join(''); }
+  const ncEl = document.getElementById('new-campaign');
+  if (ncEl) { const cur=ncEl.value; ncEl.innerHTML=`<option value="">— Luôn chạy</option>`+allCamp.map(c=>`<option value="${c}"${cur===c?' selected':''}>${c}</option>`).join(''); }
+
+  // Apply preview filters
+  const fR = document.getElementById('filter-region')?.value  || '';
+  const fC = document.getElementById('filter-campaign')?.value || '';
+  const isFiltered = !!(fR || fC);
+  const viewList = pl.map((v,i) => ({v,i})).filter(({v}) => {
+    if (fR && v.regions !== undefined && (v.regions.length === 0 || !v.regions.includes(fR))) return false;
+    if (fC && v.campaign && v.campaign !== fC) return false;
+    return true;
+  });
+  const fi = document.getElementById('filter-info');
+  if (fi) fi.textContent = isFiltered ? `→ ${viewList.length}/${pl.length} video` : '';
+
   if (!pl.length) {
     con.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0 16px;">Playlist trống — thêm mục bên dưới.</div>`;
     return;
   }
+  if (!viewList.length) {
+    con.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0 16px;">Không có video nào khớp bộ lọc. <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Xoá bộ lọc</button></div>`;
+    return;
+  }
 
-  con.innerHTML = `<div class="playlist-wrap">${pl.map((v,i) => {
+  con.innerHTML = `<div class="playlist-wrap">${viewList.map(({v,i}) => {
     const type   = v.type || 'youtube';
     const isYT   = type === 'youtube';
     const isImg  = type === 'image';
@@ -464,17 +524,19 @@ function render() {
     const thumbEl  = isYT
       ? `<img class="thumb" src="${thumbUrl(v.id)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt=""><div class="thumb-ph" style="display:none;">▶</div>`
       : `<div class="thumb-ph">${isImg ? '🖼' : '☁'}<br><span style="font-size:9px">${isDrv?'Drive':'Image'}</span></div>`;
-    const durEl = v.duration
-      ? `<span>${v.duration}s</span>`
-      : `<span class="warn">⚠ chưa có duration${isImg?' (mặc định 5s)':''}</span>`;
+    const durEl     = v.duration ? `<span>${v.duration}s</span>` : `<span class="warn">⚠ chưa có duration${isImg?' (mặc định 5s)':''}</span>`;
+    const hcmChk    = !v.regions || v.regions.includes('hcm') ? 'checked' : '';
+    const hnChk     = !v.regions || v.regions.includes('hn')  ? 'checked' : '';
+    const noRegWarn = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
+    const campOpts  = getCampaignList().map(c=>`<option value="${c}"${v.campaign===c?' selected':''}>${c}</option>`).join('');
     return `<div class="video-card${dragSrc && dragSrc.tab===activeTab && dragSrc.i===i ? ' dragging' : ''}"
-        draggable="true"
-        ondragstart="onDragStart('${activeTab}',${i},event)"
-        ondragover="onDragOver(event)"
-        ondragleave="onDragLeave(event)"
-        ondrop="onDrop('${activeTab}',${i},event)"
-        ondragend="onDragEnd(event)">
-      <div class="drag-handle" title="Kéo để sắp xếp">⠿</div>
+        draggable="${!isFiltered}"
+        ondragstart="${!isFiltered?`onDragStart('${activeTab}',${i},event)`:''}"
+        ondragover="${!isFiltered?'onDragOver(event)':''}"
+        ondragleave="${!isFiltered?'onDragLeave(event)':''}"
+        ondrop="${!isFiltered?`onDrop('${activeTab}',${i},event)`:''}"
+        ondragend="${!isFiltered?'onDragEnd(event)':''}">
+      <div class="drag-handle" title="${isFiltered?'Xoá bộ lọc để sắp xếp':'Kéo để sắp xếp'}" style="${isFiltered?'opacity:.25;cursor:not-allowed;':''}">⠿</div>
       ${thumbEl}
       <div class="video-info">
         <div class="video-label">${escHtml(v.label||`Mục ${i+1}`)}</div>
@@ -483,11 +545,20 @@ function render() {
           <span class="video-id">${v.id.length>16?v.id.slice(0,16)+'…':v.id}</span>
           ${durEl}
         </div>
+        <div class="video-tags">
+          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'hcm',this.checked)" ${hcmChk}> HCM</label>
+          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'hn',this.checked)" ${hnChk}> HN</label>
+          ${noRegWarn}<span class="tag-sep">·</span>
+          <select class="campaign-sel" onchange="updateCampaign('${activeTab}',${i},this.value)">
+            <option value="">— Luôn chạy</option>
+            ${campOpts}
+          </select>
+        </div>
       </div>
       <div class="video-actions">
         <div class="order-btns">
-          <button class="btn-order" onclick="moveItem('${activeTab}',${i},-1)" ${i===0?'disabled':''}>↑</button>
-          <button class="btn-order" onclick="moveItem('${activeTab}',${i}, 1)" ${i===pl.length-1?'disabled':''}>↓</button>
+          <button class="btn-order" onclick="moveItem('${activeTab}',${i},-1)" ${i===0||isFiltered?'disabled':''}>↑</button>
+          <button class="btn-order" onclick="moveItem('${activeTab}',${i}, 1)" ${i===pl.length-1||isFiltered?'disabled':''}>↓</button>
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeItem('${activeTab}',${i})">Xóa</button>
       </div>
@@ -559,12 +630,21 @@ function addItem() {
 
   const entry = { id, type, label: lbl || `Mục ${playlists[activeTab].length + 1}` };
   if (dur) entry.duration = parseInt(dur);
+  const rHcm = document.getElementById('new-region-hcm').checked;
+  const rHn  = document.getElementById('new-region-hn').checked;
+  if (!rHcm || !rHn) entry.regions = [...(rHcm?['hcm']:[]),...(rHn?['hn']:[])];
+  const camp = document.getElementById('new-campaign').value;
+  if (camp) entry.campaign = camp;
   playlists[activeTab].push(entry);
 
-  document.getElementById('new-url').value = '';
-  document.getElementById('new-label').value = '';
+  document.getElementById('new-url').value      = '';
+  document.getElementById('new-label').value    = '';
   document.getElementById('new-duration').value = '';
-  document.getElementById('new-thumb').style.display = 'none';
+  document.getElementById('new-thumb').style.display        = 'none';
+  document.getElementById('new-region-hcm').checked         = true;
+  document.getElementById('new-region-hn').checked          = true;
+  document.getElementById('new-region-warn').style.display  = 'none';
+  document.getElementById('new-campaign').value              = '';
   markDirty(true);
   render();
   updateDurSummary();
@@ -576,6 +656,30 @@ function moveItem(tab, i, dir) {
   if (j<0 || j>=playlists[tab].length) return;
   [playlists[tab][i], playlists[tab][j]] = [playlists[tab][j], playlists[tab][i]];
   markDirty(true); render();
+}
+function updateRegion(tab, i, region, checked) {
+  const v = playlists[tab][i];
+  let regions = v.regions ? [...v.regions] : ['hcm', 'hn'];
+  if (checked && !regions.includes(region)) regions.push(region);
+  if (!checked) regions = regions.filter(r => r !== region);
+  regions.sort();
+  if (regions.length === 2) delete v.regions; else v.regions = regions;
+  markDirty(true); render();
+}
+function updateCampaign(tab, i, val) {
+  if (val) playlists[tab][i].campaign = val; else delete playlists[tab][i].campaign;
+  markDirty(true); render();
+}
+function getCampaignList() {
+  const val = document.getElementById('cfg-campaigns')?.value || '';
+  return val.split(',').map(s => s.trim()).filter(Boolean);
+}
+function clearFilters() {
+  const fr = document.getElementById('filter-region');
+  const fc = document.getElementById('filter-campaign');
+  if (fr) fr.value = '';
+  if (fc) fc.value = '';
+  render();
 }
 
 function markDirty(val) {
@@ -704,6 +808,7 @@ function buildConfigJs() {
   const syncMin    = parseInt(document.getElementById('cfg-sync').value) || 5;
   const reloadHour = parseInt(document.getElementById('cfg-reload-hour').value) ?? 8;
   const showStatus = document.getElementById('cfg-status').checked;
+  const campList   = getCampaignList();
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
 
@@ -712,6 +817,11 @@ function buildConfigJs() {
     if (v.type && v.type !== 'youtube') parts.push(`type: '${v.type}'`);
     if (v.duration) parts.push(`duration: ${v.duration}`);
     parts.push(`label: '${(v.label||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`);
+    if (v.regions !== undefined) {
+      const isAll = v.regions.length===2 && v.regions.includes('hcm') && v.regions.includes('hn');
+      if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${r}'`).join(', ')}]`);
+    }
+    if (v.campaign) parts.push(`campaign: '${v.campaign}'`);
     return `  { ${parts.join(', ')} }`;
   }
   const ls = playlists.landscape.map(row).join(',\n') || '  // trống';
@@ -736,6 +846,7 @@ const APP_CONFIG = {
   dailyReloadMinute: 0,
   showStatusBar: ${showStatus},
   errorSkipDelay: 2000,
+  campaigns: [${campList.map(c=>`'${c}'`).join(', ')}],
 };
 `;
 }
@@ -793,6 +904,7 @@ async function loadFromGitHub() {
       document.getElementById('cfg-sync').value        = cfg.syncIntervalMinutes ?? 5;
       document.getElementById('cfg-reload-hour').value = cfg.dailyReloadHour ?? 8;
       document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
+      if (cfg.campaigns?.length) document.getElementById('cfg-campaigns').value = cfg.campaigns.join(', ');
     }
     snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
     markDirty(false); render();
@@ -864,6 +976,11 @@ function diffTab(oldList, newList, tabLabel) {
       changes.push(`${tabLabel} ~Renamed "${ov.label}" -> "${nv.label}"`);
     if (ov.duration !== nv.duration)
       changes.push(`${tabLabel} ~Duration "${nv.label}": ${ov.duration||'--'}s -> ${nv.duration||'--'}s`);
+    const fmtR = r => !r ? 'All' : r.length===0 ? 'None' : r.map(x=>x.toUpperCase()).join('+');
+    if (JSON.stringify(ov.regions??null) !== JSON.stringify(nv.regions??null))
+      changes.push(`${tabLabel} ~Regions "${nv.label}": ${fmtR(ov.regions)} -> ${fmtR(nv.regions)}`);
+    if ((ov.campaign||'') !== (nv.campaign||''))
+      changes.push(`${tabLabel} ~Campaign "${nv.label}": ${ov.campaign||'(always)'} -> ${nv.campaign||'(always)'}`);
   }
   return changes;
 }

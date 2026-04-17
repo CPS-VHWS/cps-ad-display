@@ -62,7 +62,16 @@
   </button>
   <script src="../config.js"></script>
   <script>
-  const PLAYLIST   = PLAYLIST_PORTRAIT;
+  const _region   = new URLSearchParams(location.search).get('r');
+  const _campaign = new URLSearchParams(location.search).get('c');
+  const PLAYLIST  = PLAYLIST_PORTRAIT.filter(v => {
+    if (v.regions !== undefined) {
+      if (v.regions.length === 0) return false;
+      if (_region && !v.regions.includes(_region)) return false;
+    }
+    if (_campaign && v.campaign && v.campaign !== _campaign) return false;
+    return true;
+  });
   let player = null, currentIndex = 0, isReady = false, syncTimer = null, autoTimer = null, ytWatchdog = null;
   let _vidStartTime = 0, _vidDuration = 0;
 
