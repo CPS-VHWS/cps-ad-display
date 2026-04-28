@@ -8,8 +8,9 @@
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  CẤU HÌNH ADMIN                                             ║
   // ╚══════════════════════════════════════════════════════════════╝
-  const ADMIN_PIN    = '0526';   // ← đổi mật khẩu tại đây
-  const GITHUB_TOKEN = '';       // ← token lưu tự động trong localStorage
+  // SHA-256 hash của PIN (đổi PIN: chạy: echo -n "PIN_MỚI" | shasum -a 256)
+  const ADMIN_PIN_HASH = '8a7118aab1e7c32953d2a02e46be8b410a49318ff12c368ccee01cfe9bc8d098';
+  const GITHUB_TOKEN = '';       // ← token lưu trong sessionStorage (xoá khi đóng browser/tab)
   // URL màn hình hiển thị (dùng cho idle redirect)
   const DISPLAY_URL  = 'https://cps-ad-display.pages.dev/';
   const IDLE_MINUTES = 2;        // ← phút idle trước khi mở màn hình display
@@ -172,6 +173,7 @@
            style="color:var(--accent);text-decoration:none;font-size:11px;">Tạo token mới ↗</a>
       </label>
       <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Token chỉ lưu trong tab hiện tại — đóng browser sẽ phải dán lại.</div>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="loadFromGitHub()">↓ Tải playlist từ GitHub</button>
   </div>
@@ -346,11 +348,23 @@ let campaignList = [];
 // ═══════════════════════════════════════════════════════════════
 //  PIN
 // ═══════════════════════════════════════════════════════════════
-function checkPin() {
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPin() {
   const val = document.getElementById('pin-input').value;
   const err = document.getElementById('pin-err');
-  if (val === ADMIN_PIN) {
-    sessionStorage.setItem('cps_auth','1');
+  const hash = await sha256hex(val);
+  if (hash === ADMIN_PIN_HASH) {
+    // Tạo session token = SHA-256(PIN_HASH + random salt)
+    // → không thể forge bằng cách set sessionStorage thủ công
+    const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                   .map(b => b.toString(16).padStart(2,'0')).join('');
+    const token = await sha256hex(ADMIN_PIN_HASH + salt);
+    sessionStorage.setItem('cps_auth_salt',  salt);
+    sessionStorage.setItem('cps_auth_token', token);
     document.getElementById('pin-screen').classList.add('hidden');
     document.getElementById('pin-input').value = '';
     err.textContent = '';
@@ -363,25 +377,42 @@ function checkPin() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('cps_auth') === '1') {
+async function verifySession() {
+  const salt  = sessionStorage.getItem('cps_auth_salt');
+  const token = sessionStorage.getItem('cps_auth_token');
+  if (!salt || !token) return false;
+  return (await sha256hex(ADMIN_PIN_HASH + salt)) === token;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (await verifySession()) {
     document.getElementById('pin-screen').classList.add('hidden');
     initAdmin();
   } else {
+    sessionStorage.removeItem('cps_auth_salt');
+    sessionStorage.removeItem('cps_auth_token');
     document.getElementById('pin-input').focus();
   }
 });
 
 function initAdmin() {
-  const saved = localStorage.getItem('cps_admin');
-  if (saved) {
+  // Migration: token cũ lưu ở localStorage → chuyển sang sessionStorage và xoá khỏi localStorage
+  const legacy = localStorage.getItem('cps_admin');
+  if (legacy) {
     try {
-      const d = JSON.parse(saved);
-      if (d.token) document.getElementById('gh-token').value = d.token;
+      const d = JSON.parse(legacy);
+      if (d.token) {
+        sessionStorage.setItem('cps_admin_token', d.token);
+        delete d.token;
+        localStorage.setItem('cps_admin', JSON.stringify(d));
+      }
       if (d.owner) document.getElementById('gh-owner').value = d.owner;
       if (d.repo)  document.getElementById('gh-repo').value  = d.repo;
     } catch(e){}
   }
+  // Token: chỉ đọc từ sessionStorage (sạch khi đóng tab)
+  const sessToken = sessionStorage.getItem('cps_admin_token');
+  if (sessToken) document.getElementById('gh-token').value = sessToken;
   if (GITHUB_TOKEN && !document.getElementById('gh-token').value)
     document.getElementById('gh-token').value = GITHUB_TOKEN;
 
@@ -395,8 +426,10 @@ function initAdmin() {
 }
 
 function saveLocalSettings() {
+  // Token → sessionStorage (xoá khi đóng tab/browser, giảm rủi ro XSS đánh cắp)
+  sessionStorage.setItem('cps_admin_token', document.getElementById('gh-token').value.trim());
+  // Owner/repo → localStorage (không nhạy cảm, tiện hơn)
   localStorage.setItem('cps_admin', JSON.stringify({
-    token: document.getElementById('gh-token').value.trim(),
     owner: document.getElementById('gh-owner').value.trim(),
     repo : document.getElementById('gh-repo').value.trim(),
   }));
@@ -420,6 +453,8 @@ function setupIdleRedirect() {
   }
 
   function startCountdown() {
+    // Có thay đổi chưa lưu → không auto-redirect (tránh mất dữ liệu)
+    if (dirty) { reset(); return; }
     remaining = 30000; // 30s warning before redirect
     banner.style.display = 'block';
     clearInterval(countdownInterval);
@@ -716,8 +751,9 @@ function getCampaignList() { return campaignList; }
 
 function addCampaign() {
   const input = document.getElementById('new-campaign-input');
-  const name  = input.value.trim().toLowerCase().replace(/\s+/g, '-');
-  if (!name) return;
+  // Whitelist: chỉ a-z0-9 và dấu gạch — chặn ký tự nguy hiểm (', <, ", \, etc.)
+  const name  = input.value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (!name) { toast('Tên chương trình không hợp lệ (chỉ a-z, 0-9, dấu gạch)', 'error'); return; }
   if (campaignList.includes(name)) { toast('Campaign đã tồn tại', 'error'); return; }
   campaignList.push(name);
   input.value = '';
@@ -740,10 +776,13 @@ function renderCampaignChips() {
   }
   el.innerHTML = campaignList.map(c =>
     `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.3);color:var(--accent);border-radius:20px;padding:3px 12px 3px 10px;font-size:12px;font-weight:500;">
-      ${c}
-      <button onclick="removeCampaign('${c}')" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font-size:15px;line-height:1;opacity:.6;margin-left:2px;" title="Xoá">×</button>
+      ${escHtml(c)}
+      <button data-campaign="${escHtml(c)}" style="background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font-size:15px;line-height:1;opacity:.6;margin-left:2px;" title="Xoá">×</button>
     </span>`
   ).join('');
+  el.querySelectorAll('button[data-campaign]').forEach(btn => {
+    btn.onclick = () => removeCampaign(btn.dataset.campaign);
+  });
 }
 function clearFilters() {
   const fr = document.getElementById('filter-region');
@@ -919,16 +958,18 @@ function buildConfigJs() {
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
 
+  // Escape mọi string trước khi nhúng vào single-quote literal — chặn dấu ' / \ làm hỏng config.js
+  const esc = s => String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   function row(v) {
-    const parts = [`id: '${v.id}'`];
-    if (v.type && v.type !== 'youtube') parts.push(`type: '${v.type}'`);
+    const parts = [`id: '${esc(v.id)}'`];
+    if (v.type && v.type !== 'youtube') parts.push(`type: '${esc(v.type)}'`);
     if (v.duration) parts.push(`duration: ${v.duration}`);
-    parts.push(`label: '${(v.label||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`);
+    parts.push(`label: '${esc(v.label)}'`);
     if (v.regions !== undefined) {
       const isAll = v.regions.length===2 && v.regions.includes('hcm') && v.regions.includes('hn');
-      if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${r}'`).join(', ')}]`);
+      if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${esc(r)}'`).join(', ')}]`);
     }
-    if (v.campaign) parts.push(`campaign: '${v.campaign}'`);
+    if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
     if (v.skipEnd)  parts.push(`skipEnd: true`);
     return `  { ${parts.join(', ')} }`;
   }
@@ -954,7 +995,7 @@ const APP_CONFIG = {
   dailyReloadMinute: 0,
   showStatusBar: ${showStatus},
   errorSkipDelay: 2000,
-  campaigns: [${campList.map(c=>`'${c}'`).join(', ')}],
+  campaigns: [${campList.map(c=>`'${esc(c)}'`).join(', ')}],
 };
 `;
 }

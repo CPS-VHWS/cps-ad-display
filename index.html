@@ -54,6 +54,7 @@
     </svg>
   </button>
   <script src="config.js"></script>
+  <script src="config-watcher.js"></script>
   <script>
   const _region   = new URLSearchParams(location.search).get('r');
   const _campaign = new URLSearchParams(location.search).get('c');
@@ -82,7 +83,7 @@
     if (isReady) return; // guard: YouTube API đôi khi fire onReady 2 lần
     isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
-    startVideo(0); scheduleSyncTimer(); scheduleHourlyReload(); startStatusTicker(); startConfigWatcher();
+    startVideo(0); scheduleSyncTimer(); scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
   }
   function onPlayerStateChange(e) { if (e.data === 0) playNext(); }
   function onPlayerError(e) { console.warn('[AdDisplay] Error:', e.data); setTimeout(playNext, APP_CONFIG.errorSkipDelay); }
@@ -148,29 +149,15 @@
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => { startVideo(0); scheduleSyncTimer(); }, msToNextSyncPoint());
   }
-  function startConfigWatcher() {
-    const configUrl = 'config.js';
-    const intervalMs = (APP_CONFIG.syncIntervalMinutes || 5) * 60 * 1000;
-    let fingerprint = null;
-    // Lấy fingerprint ban đầu
-    fetch(configUrl + '?_t=' + Date.now(), { cache: 'no-store' })
-      .then(r => r.text()).then(t => { fingerprint = t.length + '|' + t.slice(-60); })
-      .catch(() => {});
-    // Poll định kỳ — nếu config thay đổi, đặt cờ reload sau video hiện tại
-    setInterval(() => {
-      fetch(configUrl + '?_t=' + Date.now(), { cache: 'no-store' })
-        .then(r => r.text()).then(t => {
-          const fp = t.length + '|' + t.slice(-60);
-          if (fingerprint && fp !== fingerprint) _configChanged = true;
-          fingerprint = fp;
-        }).catch(() => {});
-    }, intervalMs);
-  }
-
+  // Wallclock-based reload: setTimeout có thể trôi nếu WebView Android ngủ
+  // → so sánh Date.now() với target mỗi 30s, đảm bảo reload đúng theo giờ thực
   function scheduleHourlyReload() {
     const now = new Date();
-    const msToNextHour = (3600 - now.getMinutes() * 60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    setTimeout(() => location.reload(true), msToNextHour);
+    const target = new Date(now); target.setHours(now.getHours()+1, 0, 0, 0);
+    const targetMs = target.getTime();
+    setInterval(() => {
+      if (Date.now() >= targetMs) location.reload(true);
+    }, 30 * 1000);
   }
   function enterFS() {
     const el = document.documentElement;

@@ -1,5 +1,5 @@
 # Code Review Log — cps-ad-display
-_Last reviewed: 2026-04-17_
+_Last reviewed: 2026-04-19_
 
 ---
 
@@ -17,6 +17,17 @@ _Last reviewed: 2026-04-17_
 | 8 | `admin.html` | No unsaved-changes warning — closing tab or refreshing discards edits silently | Added `beforeunload` handler gated on `dirty` flag |
 | 9 | `index.html` / `vertical/index.html` | Config changes only applied on hourly reload — machines could lag up to 1 hour behind | Added `startConfigWatcher()`: polls `config.js` every `syncIntervalMinutes`, sets `_configChanged` flag on diff, reloads at next video transition |
 | 10 | `sw.js` | Poll requests (`config.js?_t=...`) would pollute cache with per-timestamp keys | SW strips query params before caching, always stores/serves under canonical URL |
+| 11 | `index.html` / `vertical/index.html` | Config fingerprint used `t.length + '\|' + t.slice(-60)` — misses changes that don't alter file length or tail (e.g. edit in middle of file) | Compare full file text (`t !== fingerprint`) — config.js is ~5KB, no cost |
+| 12 | `sw.js` | `caches.open(...).then(c => c.put(...))` fire-and-forget — throws unhandled Promise rejection on devices with low storage quota | Added `.catch(() => {})` |
+| 13 | `index.html` / `vertical/index.html` | `startConfigWatcher()` duplicated verbatim — only `configUrl` differed, risk of fixes drifting between files | Extracted to shared `config-watcher.js`; both pages load it via `<script src>`; SW shell assets updated; cache bumped to `v3` |
+| 14 | `admin.html` | PIN `0526` lưu plaintext — ai View Source / F12 cũng đọc được | Thay bằng `ADMIN_PIN_HASH` (SHA-256), so sánh qua `crypto.subtle.digest` |
+| 15 | `admin.html` | Session bypass: `sessionStorage.setItem('cps_auth','1')` trong DevTools là vào thẳng admin | Session token = `SHA-256(PIN_HASH + random salt)` lưu salt+token, verify bằng cách re-derive — không thể forge nếu không biết PIN_HASH |
+| 16 | `admin.html` | **CRITICAL XSS** trong `renderCampaignChips()`: tên campaign nhúng raw vào innerHTML và `onclick="removeCampaign('${c}')"` — campaign từ `cfg.campaigns` (config.js) hoặc input người dùng có thể chứa JS, đánh cắp GitHub token từ localStorage | (1) `escHtml(c)` cho text + `data-campaign` attribute với delegated handler thay cho inline onclick. (2) `addCampaign` whitelist `[a-z0-9-]` chặn ký tự nguy hiểm tại nguồn |
+| 17 | `admin.html` | Auto-redirect sau 2 phút idle gọi `window.location.href` không check `dirty` → mất thay đổi đang sửa | `startCountdown()` bail nếu `dirty=true`, gọi `reset()` để chờ tiếp |
+| 18 | `admin.html` | `buildConfigJs.row()` chỉ escape `label`, không escape `id`/`type`/`regions`/`campaign`. Một dấu `'` trong `id` (đặc biệt URL hình ảnh nhập tự do) phá vỡ config.js → tất cả 2000 máy crash khi parse | Helper `esc()` chung, áp dụng cho mọi string field bao gồm `campaigns` array trong APP_CONFIG |
+| 19 | `admin.html` | GitHub PAT lưu ở `localStorage` — bất kỳ XSS nào leak token → ghi đè playlist toàn hệ thống | Token chuyển sang `sessionStorage` (xoá khi đóng tab/browser); owner/repo giữ ở localStorage. Migration tự động chuyển token cũ. Help text dưới input nhắc admin |
+| 20 | `index.html` / `vertical/index.html` | `setTimeout(reload, msToNextHour)` có thể trôi nhiều giờ nếu WebView Android/iOS ngủ → máy không reload, không nhận được thay đổi config | Thay bằng `setInterval(check wallclock, 30s)` — luôn reload đúng theo giờ thực, không phụ thuộc timer chạy liên tục |
+| 21 | `_headers` | Thiếu các header bảo mật cơ bản — exposed cho clickjacking và MIME confusion | Thêm `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Permissions-Policy` lock camera/mic/geo/payment |
 
 ---
 
@@ -44,6 +55,7 @@ _Last reviewed: 2026-04-17_
 | D5 | `vertical/index.html` | `setupIdleFullscreen()` uses local `idleTimer` — inconsistent with landscape's `_idleTimer` | Cosmetic, works correctly as-is |
 | D6 | `index.html` / `vertical/index.html` | Hourly reload fires at every `:00:00` — `dailyReloadHour` in APP_CONFIG is saved but not read by display pages | By design for now (more frequent = faster config pickup). Could wire up if needed |
 | D7 | `index.html` / `vertical/index.html` | At 10,000+ machines, all reloading at `:00:00` simultaneously could spike origin | Add `Math.random() * 60 * 1000` jitter to `scheduleHourlyReload`. Not needed at 2000 machines |
+| D8 | `index.html` / `vertical/index.html` | No YouTube playback quality cap — 4K monitors could pull 4K streams unnecessarily | `setPlaybackQuality()` is deprecated (2021), YouTube ignores it. In practice: kiosk screens are 1080p so YouTube auto-serves 1080p. Monitor only if bandwidth complaints arise at specific sites |
 
 ---
 
@@ -81,6 +93,7 @@ _Last reviewed: 2026-04-17_
 | `vertical/index.html` | Portrait display (9:16) |
 | `admin.html` | Admin dashboard (PIN: see ADMIN_PIN in file) |
 | `config.js` | Playlist data — edited by admin, network-first with SW offline fallback |
+| `config-watcher.js` | Shared script — `startConfigWatcher(configUrl)` polled by both display pages |
 | `sw.js` | Service worker — caches shell + config.js fallback, bypasses YouTube |
 | `_headers` | Cloudflare Pages — sets `Service-Worker-Allowed: /` |
 | `manifest.json` | PWA manifest (landscape) |

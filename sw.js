@@ -4,12 +4,13 @@
 //  Không cache YouTube stream (luôn lấy trực tiếp từ mạng).
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ad-display-v2';
+const CACHE_NAME = 'ad-display-v3';
 
 // Chỉ cache các file shell của ứng dụng
 const SHELL_ASSETS = [
   './index.html',
   './manifest.json',
+  './config-watcher.js',
   // config.js không pre-cache — luôn lấy mới nhất từ network, cache lại để dùng offline
 ];
 
@@ -53,7 +54,7 @@ self.addEventListener('fetch', event => {
       fetch(event.request)
         .then(res => {
           const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(canonicalUrl, clone));
+          caches.open(CACHE_NAME).then(c => c.put(canonicalUrl, clone)).catch(() => {});
           return res;
         })
         .catch(() => caches.match(canonicalUrl))
