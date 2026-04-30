@@ -4,14 +4,11 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: '-ueUb6PNwbs', duration: 96, label: 'Design is how it works', campaign: 'test2' },
-  { id: 'qUfVSh4eaDE', duration: 107, label: 'Apple Education' },
-  { id: 'bg3iEHHTGtQ', duration: 36, label: 'MacBook Neo' }
+  { id: '1NDDNgwM4z3L9R2OL_QkabNIgdMLuShKg', type: 'gdrive', duration: 40, label: 'SCamp 2026' }
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: 'cwZsHxLLlZ0', duration: 15, label: 'Mac Mini' },
-  { id: '_2IV2fu1aAA', duration: 24, label: 'MacBook Neo' }
+  { id: '1mMnX3YcQ5Sqc1F_6vl-SXsDTCrn4DgFF', type: 'gdrive', duration: 40, label: 'SCamp 2026' }
 ];
 
 const APP_CONFIG = {
