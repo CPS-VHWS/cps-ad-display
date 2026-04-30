@@ -1,5 +1,17 @@
 [
   {
+    "ts": 1777548233212,
+    "changes": [
+      "Landscape +Added \"SCamp 2026\" (Google Drive) at #1",
+      "Landscape -Removed \"Design is how it works\" (was #1)",
+      "Landscape -Removed \"Apple Education\" (was #2)",
+      "Landscape -Removed \"MacBook Neo\" (was #3)",
+      "Portrait +Added \"SCamp 2026\" (Google Drive) at #1",
+      "Portrait -Removed \"Mac Mini\" (was #1)",
+      "Portrait -Removed \"MacBook Neo\" (was #2)"
+    ]
+  },
+  {
     "ts": 1776415067638,
     "changes": [
       "Portrait +Added \"Mac Mini\" (YouTube) at #1",
