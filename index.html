@@ -112,7 +112,7 @@
       if (player && isReady) { try { player.stopVideo(); } catch(e){} }
       const gd = document.getElementById('gd-player');
       gd.style.display = 'block';
-      gd.src = `https://drive.google.com/file/d/${v.id}/preview?rm=minimal`;
+      gd.src = `https://drive.google.com/file/d/${v.id}/preview?rm=minimal&autoplay=1`;
       _vidDuration = v.duration || 0; _vidStartTime = Date.now();
       // Fallback 30 phút nếu không có duration (phòng trường hợp config cũ)
       autoTimer = setTimeout(playNext, (v.duration || 1800) * 1000);
