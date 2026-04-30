@@ -8,7 +8,7 @@ const PLAYLIST_LANDSCAPE = [
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: '1mMnX3YcQ5Sqc1F_6vl-SXsDTCrn4DgFF', type: 'gdrive', duration: 40, label: 'SCamp 2026' }
+  { id: '1mMnX3YcQ5Sqc1F_6vl-SXsDTCrn4DgFF', type: 'gdrive', duration: 40, label: 'SCamp 2026', campaign: 'scamp' }
 ];
 
 const APP_CONFIG = {
@@ -17,5 +17,5 @@ const APP_CONFIG = {
   dailyReloadMinute: 0,
   showStatusBar: true,
   errorSkipDelay: 2000,
-  campaigns: ['test1', 'test2', 'scamp'],
+  campaigns: ['scamp'],
 };
