@@ -1,5 +1,11 @@
 [
   {
+    "ts": 1777550230106,
+    "changes": [
+      "Portrait ~Campaign \"SCamp 2026\": (always) -> scamp"
+    ]
+  },
+  {
     "ts": 1777550180796,
     "changes": [
       "Landscape ~Campaign \"SCamp 2026\": (always) -> scamp"
