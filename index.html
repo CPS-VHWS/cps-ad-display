@@ -165,9 +165,11 @@
       document.getElementById('gd-player').src = 'about:blank';
       if (!isReady || !player) return;
 
-      if (isSameVideo && player.getPlayerState() === 1) {
-        const cur = player.getCurrentTime();
-        if (Math.abs(cur - state.offsetSec) > 3) player.seekTo(state.offsetSec, true);
+      const ytState = player.getPlayerState();
+      if (isSameVideo && ytState !== -1) {
+        // Cùng video đã load sẵn — seekTo thay vì loadVideoById, không tải lại
+        player.seekTo(state.offsetSec, true);
+        if (ytState !== 1) player.playVideo();
       } else {
         player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
         _muted ? player.mute() : player.unMute();
