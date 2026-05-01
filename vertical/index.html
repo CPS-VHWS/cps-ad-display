@@ -79,12 +79,26 @@
   const TOTAL_DUR_MS = PLAYLIST.reduce((s, v) => s + Math.max(1, (v.duration || 60)) * 1000, 0);
 
   let player = null, currentIndex = 0, isReady = false;
-  let _muted = true; // khai báo sớm — syncAndPlay dùng _muted trước khi nó được gán
+  let _muted = true;
   let _vidStartTime = 0, _vidDuration = 0;
   let _configChanged = false;
   let globalWatchdog = null;
-  let _lastDriftCheck = 0; // throttle YouTube IPC getCurrentTime()
-  let ytSkipWatchdog = null; // riêng cho skipEnd detection
+  let _lastDriftCheck = 0;
+  let ytSkipWatchdog = null;
+  let _clockOffset = 0;
+
+  function syncServerClock() {
+    const t0 = Date.now();
+    fetch('../config.js', { method: 'HEAD', cache: 'no-store' })
+      .then(r => {
+        const t1 = Date.now();
+        const serverMs = new Date(r.headers.get('Date')).getTime();
+        if (serverMs) _clockOffset = serverMs - (t0 + t1) / 2;
+      })
+      .catch(() => {});
+  }
+
+  function serverNow() { return Date.now() + _clockOffset; }
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
@@ -97,6 +111,7 @@
     if (isReady) return; // guard: YouTube API đôi khi fire onReady 2 lần
     isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
+    syncServerClock();
     scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('../config.js');
     syncAndPlay();
     startGlobalWatchdog();
@@ -110,7 +125,7 @@
 
   function getAbsoluteSyncState() {
     if (!TOTAL_DUR_MS) return null;
-    const posMs = Date.now() % TOTAL_DUR_MS;
+    const posMs = serverNow() % TOTAL_DUR_MS;
     let acc = 0;
     for (let i = 0; i < PLAYLIST.length; i++) {
       const vDurMs = Math.max(1, (PLAYLIST[i].duration || 60)) * 1000;

@@ -77,6 +77,24 @@
   let _configChanged = false;
   let globalWatchdog = null;
   let _lastDriftCheck = 0; // throttle YouTube IPC getCurrentTime()
+  let _clockOffset = 0;   // hiệu chỉnh đồng hồ máy so với server (ms)
+
+  // Đo lệch đồng hồ giữa máy và Cloudflare server.
+  // Dùng NTP half-RTT: offset = serverTime − (t0 + t1) / 2
+  // Gọi lại mỗi giờ (theo reload) nên không cần refresh thêm.
+  function syncServerClock() {
+    const t0 = Date.now();
+    fetch('config.js', { method: 'HEAD', cache: 'no-store' })
+      .then(r => {
+        const t1 = Date.now();
+        const serverMs = new Date(r.headers.get('Date')).getTime();
+        if (serverMs) _clockOffset = serverMs - (t0 + t1) / 2;
+      })
+      .catch(() => {});
+  }
+
+  // Thời gian đã hiệu chỉnh theo server — dùng thay Date.now() trong sync
+  function serverNow() { return Date.now() + _clockOffset; }
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
@@ -89,6 +107,7 @@
     if (isReady) return; // guard: YouTube API đôi khi fire onReady 2 lần
     isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
+    syncServerClock();
     scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
     syncAndPlay();
     startGlobalWatchdog();
@@ -101,7 +120,7 @@
 
   function getAbsoluteSyncState() {
     if (!TOTAL_DUR_MS) return null;
-    const posMs = Date.now() % TOTAL_DUR_MS;
+    const posMs = serverNow() % TOTAL_DUR_MS;
     let acc = 0;
     for (let i = 0; i < PLAYLIST.length; i++) {
       const vDurMs = Math.max(1, (PLAYLIST[i].duration || 60)) * 1000;
