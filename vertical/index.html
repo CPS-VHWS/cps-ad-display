@@ -186,6 +186,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     enterFS();
+    _bcAnnounce(); // báo các tab khác cùng URL nhường quyền phát
     const v = PLAYLIST[currentIndex];
     if (!v) return;
     if (!v.type || v.type === 'youtube') {
@@ -198,6 +199,18 @@
       if (_vidDuration && (Date.now() - _vidStartTime) >= _vidDuration * 1000) playNext();
     }
   });
+
+  // Tab coordination: nếu mở nhiều tab cùng URL, chỉ tab đang active mới phát
+  const _bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('cps-display') : null;
+  function _bcAnnounce() {
+    if (_bc) _bc.postMessage({ type: 'active', href: location.href });
+  }
+  if (_bc) _bc.onmessage = (e) => {
+    if (e.data.type !== 'active' || e.data.href !== location.href) return;
+    if (document.visibilityState === 'visible') return;
+    if (player && isReady) try { player.pauseVideo(); } catch(_) {}
+    clearTimeout(autoTimer);
+  };
 
   // Idle 2 phút không tương tác → vào lại fullscreen
   function setupIdleFullscreen() {
