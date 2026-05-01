@@ -68,9 +68,15 @@
   });
   // Fallback: nếu filter ra playlist rỗng (URL sai param) → phát toàn bộ tránh màn hình đen
   const PLAYLIST = _filtered.length ? _filtered : PLAYLIST_LANDSCAPE;
-  let player = null, currentIndex = 0, isReady = false, syncTimer = null, autoTimer = null, ytWatchdog = null;
-  let _vidStartTime = 0, _vidDuration = 0; // dùng cho gdrive/image
+  // Cache tổng thời lượng — playlist không đổi trong suốt session
+  const TOTAL_DUR_MS = PLAYLIST.reduce((s, v) => s + Math.max(1, (v.duration || 60)) * 1000, 0);
+
+  let player = null, currentIndex = 0, isReady = false;
+  let _muted = true; // khai báo sớm — syncAndPlay dùng _muted trước khi nó được gán
+  let _vidStartTime = 0, _vidDuration = 0;
   let _configChanged = false;
+  let globalWatchdog = null;
+  let _lastDriftCheck = 0; // throttle YouTube IPC getCurrentTime()
 
   window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player('yt-player', {
@@ -83,82 +89,108 @@
     if (isReady) return; // guard: YouTube API đôi khi fire onReady 2 lần
     isReady = true; player.mute();
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
-    startVideo(0); scheduleSyncTimer(); scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
+    scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
+    syncAndPlay();
+    startGlobalWatchdog();
   }
-  function onPlayerStateChange(e) { if (e.data === 0) playNext(); }
-  function onPlayerError(e) { console.warn('[AdDisplay] Error:', e.data); setTimeout(playNext, APP_CONFIG.errorSkipDelay); }
+  function onPlayerStateChange(e) { if (e.data === 0) syncAndPlay(); }
+  function onPlayerError(e) {
+    console.warn('[AdDisplay] Error:', e.data);
+    setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay); // tự skip sau lỗi, không kẹt màn đen
+  }
 
-  function startVideo(index) {
+  function getAbsoluteSyncState() {
+    if (!TOTAL_DUR_MS) return null;
+    const posMs = Date.now() % TOTAL_DUR_MS;
+    let acc = 0;
+    for (let i = 0; i < PLAYLIST.length; i++) {
+      const vDurMs = Math.max(1, (PLAYLIST[i].duration || 60)) * 1000;
+      if (posMs < acc + vDurMs) return { index: i, offsetSec: (posMs - acc) / 1000 };
+      acc += vDurMs;
+    }
+    return { index: 0, offsetSec: 0 };
+  }
+
+  function syncAndPlay() {
     if (_configChanged) { location.reload(true); return; }
-    if (!PLAYLIST.length) return;
-    currentIndex = ((index % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
-    const v = PLAYLIST[currentIndex];
-    clearTimeout(autoTimer);
+    const state = getAbsoluteSyncState();
+    if (!state) return;
 
-    // Hide all
+    const isSameVideo = (currentIndex === state.index);
+    currentIndex = state.index;
+    const v = PLAYLIST[currentIndex];
+
     document.getElementById('yt-player').style.display  = 'none';
     document.getElementById('gd-player').style.display  = 'none';
     document.getElementById('img-player').style.display = 'none';
-    document.getElementById('gd-player').src = 'about:blank';
 
     if (v.type === 'image') {
       const el = document.getElementById('img-player');
       el.style.display = 'block';
       el.src = v.id.startsWith('http') ? v.id : `https://drive.google.com/uc?id=${v.id}&export=view`;
-      _vidDuration = (v.duration || 5); _vidStartTime = Date.now();
-      autoTimer = setTimeout(playNext, _vidDuration * 1000);
-
+      _vidDuration = (v.duration || 5);
+      _vidStartTime = Date.now() - (state.offsetSec * 1000);
     } else if (v.type === 'gdrive') {
-      if (player && isReady) { try { player.stopVideo(); } catch(e){} }
-      const gd = document.getElementById('gd-player');
-      gd.style.display = 'block';
-      gd.src = `https://drive.google.com/file/d/${v.id}/preview?rm=minimal&autoplay=1`;
-      _vidDuration = v.duration || 0; _vidStartTime = Date.now();
-      // Fallback 30 phút nếu không có duration (phòng trường hợp config cũ)
-      autoTimer = setTimeout(playNext, (v.duration || 1800) * 1000);
-
+      if (!isSameVideo) {
+        if (player && isReady) { try { player.stopVideo(); } catch(e){} }
+        const gd = document.getElementById('gd-player');
+        gd.style.display = 'block';
+        gd.src = `https://drive.google.com/file/d/${v.id}/preview?rm=minimal&autoplay=1`;
+      } else {
+        document.getElementById('gd-player').style.display = 'block';
+      }
+      _vidDuration = (v.duration || 1800);
+      _vidStartTime = Date.now() - (state.offsetSec * 1000);
     } else {
       document.getElementById('yt-player').style.display = 'block';
+      document.getElementById('gd-player').src = 'about:blank';
       if (!isReady || !player) return;
-      player.loadVideoById({ videoId: v.id });
-      _muted ? player.mute() : player.unMute();
-      const fallbackMs = v.duration ? (v.duration + 15) * 1000 : 15 * 60 * 1000;
-      autoTimer = setTimeout(playNext, fallbackMs);
-      // Watchdog: chuyển video trước 2 giây để tránh hiện end screen YouTube
-      clearInterval(ytWatchdog);
-      if (v.skipEnd) {
-        ytWatchdog = setInterval(() => {
-          if (!player || !isReady || player.getPlayerState() !== 1) return;
-          const dur = player.getDuration(), cur = player.getCurrentTime();
-          const skipAt = Math.min(20, Math.max(2, dur * 0.15));
-          if (dur > 0 && (dur - cur) <= skipAt) { clearInterval(ytWatchdog); playNext(); }
-        }, 500);
+
+      if (isSameVideo && player.getPlayerState() === 1) {
+        const cur = player.getCurrentTime();
+        if (Math.abs(cur - state.offsetSec) > 3) player.seekTo(state.offsetSec, true);
+      } else {
+        player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
+        _muted ? player.mute() : player.unMute();
       }
     }
   }
 
-  function playNext() { clearInterval(ytWatchdog); startVideo(currentIndex + 1); }
+  function startGlobalWatchdog() {
+    clearInterval(globalWatchdog);
+    globalWatchdog = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (_configChanged) { location.reload(true); return; }
+      const state = getAbsoluteSyncState();
+      if (!state) return;
 
-  function msToNextSyncPoint() {
-    const now = new Date(), interval = APP_CONFIG.syncIntervalMinutes * 60 * 1000;
-    const elapsed = now.getMinutes()*60000 + now.getSeconds()*1000 + now.getMilliseconds();
-    const rem = elapsed % interval;
-    return rem === 0 ? interval : interval - rem;
+      if (state.index !== currentIndex) {
+        syncAndPlay();
+        return;
+      }
+
+      const v = PLAYLIST[currentIndex];
+      if ((!v.type || v.type === 'youtube') && player && isReady && player.getPlayerState() === 1) {
+        // Throttle: chỉ gọi getCurrentTime() (IPC sang iframe) mỗi 5 giây
+        const now = Date.now();
+        if (now - _lastDriftCheck >= 5000) {
+          _lastDriftCheck = now;
+          const cur = player.getCurrentTime();
+          if (Math.abs(cur - state.offsetSec) > 5) player.seekTo(state.offsetSec, true);
+        }
+      }
+    }, 1000);
   }
-  function scheduleSyncTimer() {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => { startVideo(0); scheduleSyncTimer(); }, msToNextSyncPoint());
-  }
-  // Wallclock-based reload: setTimeout có thể trôi nếu WebView Android ngủ
-  // → so sánh Date.now() với target mỗi 30s, đảm bảo reload đúng theo giờ thực
+
+  // setTimeout thay setInterval — không poll 30s/lần, chỉ fire 1 lần đúng giờ
   function scheduleHourlyReload() {
     const now = new Date();
-    const target = new Date(now); target.setHours(now.getHours()+1, 0, 0, 0);
-    const targetMs = target.getTime();
-    setInterval(() => {
-      if (Date.now() >= targetMs) location.reload(true);
-    }, 30 * 1000);
+    const target = new Date(now); target.setHours(now.getHours() + 1, 0, 0, 0);
+    const jitterMs = Math.floor(Math.random() * 300 * 1000); // jitter 0–5 phút
+    const delay = Math.max(0, target.getTime() + jitterMs - Date.now());
+    setTimeout(() => location.reload(true), delay);
   }
+
   function enterFS() {
     const el = document.documentElement;
     const fn = el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
@@ -170,43 +202,28 @@
   }
   function isFS() { return !!(document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement); }
 
-  // Click/chạm: chưa fullscreen → vào fullscreen | đang fullscreen → thoát để khách dùng máy
   const overlay = document.getElementById('overlay');
   overlay.addEventListener('click',      () => isFS() ? exitFS() : enterFS());
   overlay.addEventListener('touchstart', () => isFS() ? exitFS() : enterFS(), { passive:true });
 
-  // Tab trở lại visible → vào fullscreen + resume video nếu bị stuck
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     enterFS();
-    _bcAnnounce(); // báo các tab khác cùng URL nhường quyền phát
-    const v = PLAYLIST[currentIndex];
-    if (!v) return;
-    if (!v.type || v.type === 'youtube') {
-      if (player && isReady) {
-        const state = player.getPlayerState();
-        if (state === 2) player.playVideo();                    // paused → resume
-        else if (state === 0 || state === -1) startVideo(currentIndex); // ended/unstarted → restart
-      }
-    } else {
-      // gdrive/image: nếu timer đáng lẽ đã hết → skip luôn
-      if (_vidDuration && (Date.now() - _vidStartTime) >= _vidDuration * 1000) playNext();
-    }
+    _bcAnnounce();
+    syncAndPlay();
   });
 
-  // Tab coordination: nếu mở nhiều tab cùng URL, chỉ tab đang active mới phát
-  // Tab bị "nhường" sẽ pause YouTube / dừng timer cho đến khi được focus lại
+  // Tab coordination: chỉ tab đang visible mới phát
   const _bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('cps-display') : null;
   function _bcAnnounce() {
     if (_bc) _bc.postMessage({ type: 'active', href: location.href });
   }
   if (_bc) _bc.onmessage = (e) => {
     if (e.data.type !== 'active' || e.data.href !== location.href) return;
-    if (document.visibilityState === 'visible') return; // tab này đang active → không nhường
-    // Tab này đang ở background → pause để nhường cho tab vừa active
-    if (player && isReady) try { player.pauseVideo(); } catch(_) {}
-    clearTimeout(autoTimer);
+    if (document.visibilityState === 'visible') return;
+    if (player && isReady && player.getPlayerState() === 1) try { player.pauseVideo(); } catch(_) {}
   };
+  window.addEventListener('beforeunload', () => { if (_bc) _bc.close(); });
 
   // Idle 2 phút không tương tác → vào lại fullscreen
   let _idleTimer;
@@ -223,41 +240,26 @@
     s = Math.max(0, Math.round(s));
     return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   }
-  function getVideoRemaining() {
-    const v = PLAYLIST[currentIndex];
-    if (!v) return null;
-    if (!v.type || v.type === 'youtube') {
-      if (!player || !isReady) return null;
-      try {
-        const dur = player.getDuration(), cur = player.getCurrentTime();
-        return (dur > 0 && cur > 0) ? Math.max(0, dur - cur) : null;
-      } catch(e) { return null; }
-    }
-    // gdrive / image
-    if (!_vidDuration) return null;
-    return Math.max(0, _vidDuration - (Date.now() - _vidStartTime) / 1000);
-  }
   function startStatusTicker() {
     if (!APP_CONFIG.showStatusBar) return;
     const el = document.getElementById('status');
     setInterval(() => {
-      const now = new Date(), ms = msToNextSyncPoint();
-      const vid = PLAYLIST[currentIndex] ? (PLAYLIST[currentIndex].label || `Video ${currentIndex+1}`) : '—';
-      const rem = getVideoRemaining();
-      const vidPart = rem !== null ? `${vid} ${fmtSec(rem)}` : vid;
+      const state = getAbsoluteSyncState();
+      if (!state) return;
+      const v = PLAYLIST[state.index];
+      const vid = v ? (v.label || `Video ${state.index + 1}`) : '—';
+      const rem = (v.duration || 60) - state.offsetSec;
       const ctx = [_region, _campaign].filter(Boolean).join(' · ');
-      el.textContent = `${now.toLocaleTimeString('vi-VN')} | ${vidPart} | sync ${fmtSec(ms/1000)}${ctx ? ' | ' + ctx : ''}`;
+      el.textContent = `${new Date().toLocaleTimeString('vi-VN')} | ${vid} ${fmtSec(rem)}${ctx ? ' | ' + ctx : ''}`;
     }, 1000);
   }
 
-  // Nút loa — bật/tắt tiếng YouTube player
-  let _muted = true;
   function updateMuteIcon() {
     document.getElementById('icon-sound').style.display = _muted ? 'none' : 'block';
     document.getElementById('icon-mute').style.display  = _muted ? 'block' : 'none';
   }
   document.getElementById('mute-btn').addEventListener('click', e => {
-    e.stopPropagation(); // không trigger overlay
+    e.stopPropagation();
     _muted = !_muted;
     if (player && isReady) { _muted ? player.mute() : player.unMute(); }
     updateMuteIcon();
