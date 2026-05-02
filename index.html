@@ -78,6 +78,7 @@
   let globalWatchdog = null;
   let _lastDriftCheck = 0; // throttle YouTube IPC getCurrentTime()
   let _clockOffset = 0;   // hiệu chỉnh đồng hồ máy so với server (ms)
+  let _playerErrored = false; // flag để buộc loadVideoById sau lỗi thay vì seekTo
 
   // Đo lệch đồng hồ giữa máy và Cloudflare server.
   // Dùng NTP half-RTT: offset = serverTime − (t0 + t1) / 2
@@ -115,7 +116,8 @@
   function onPlayerStateChange(e) { if (e.data === 0) syncAndPlay(); }
   function onPlayerError(e) {
     console.warn('[AdDisplay] Error:', e.data);
-    setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay); // tự skip sau lỗi, không kẹt màn đen
+    _playerErrored = true; // buộc loadVideoById thay seekTo khi syncAndPlay chạy lại
+    setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay);
   }
 
   function getAbsoluteSyncState() {
@@ -166,11 +168,14 @@
       if (!isReady || !player) return;
 
       const ytState = player.getPlayerState();
-      if (isSameVideo && ytState !== -1) {
-        // Cùng video đã load sẵn — seekTo thay vì loadVideoById, không tải lại
+      const canSeek = isSameVideo && !_playerErrored && (ytState === 1 || ytState === 2 || ytState === 3);
+      if (canSeek) {
+        // Cùng video, đang play/pause/buffer — seekTo, không tải lại
         player.seekTo(state.offsetSec, true);
         if (ytState !== 1) player.playVideo();
       } else {
+        // Video khác, hoặc vừa lỗi, hoặc player chưa sẵn — reload hoàn toàn
+        _playerErrored = false;
         player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
         _muted ? player.mute() : player.unMute();
       }

@@ -84,6 +84,7 @@
   let _configChanged = false;
   let globalWatchdog = null;
   let _lastDriftCheck = 0;
+  let _playerErrored = false;
   let ytSkipWatchdog = null;
   let _clockOffset = 0;
 
@@ -120,6 +121,7 @@
   function onPlayerStateChange(e) { if (e.data === 0) syncAndPlay(); }
   function onPlayerError(e) {
     console.warn('[AdDisplay:Portrait] Error:', e.data);
+    _playerErrored = true;
     setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay);
   }
 
@@ -172,11 +174,12 @@
       if (!isReady || !player) return;
 
       const ytState = player.getPlayerState();
-      if (isSameVideo && ytState !== -1) {
-        // Cùng video đã load sẵn — seekTo thay vì loadVideoById, không tải lại
+      const canSeek = isSameVideo && !_playerErrored && (ytState === 1 || ytState === 2 || ytState === 3);
+      if (canSeek) {
         player.seekTo(state.offsetSec, true);
         if (ytState !== 1) player.playVideo();
       } else {
+        _playerErrored = false;
         player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
         _muted ? player.mute() : player.unMute();
       }
