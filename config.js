@@ -4,15 +4,15 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: '1NDDNgwM4z3L9R2OL_QkabNIgdMLuShKg', type: 'gdrive', duration: 40, label: 'SCamp 2026', campaign: 'scamp' }
+  { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'scamp' }
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: '1mMnX3YcQ5Sqc1F_6vl-SXsDTCrn4DgFF', type: 'gdrive', duration: 40, label: 'SCamp 2026', campaign: 'scamp' }
+  { id: 'YpV8qvzXvcU', label: 'SCamp 2026', campaign: 'scamp' }
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 5,
+  syncIntervalMinutes: 1,
   dailyReloadHour: 8,
   dailyReloadMinute: 0,
   showStatusBar: true,
