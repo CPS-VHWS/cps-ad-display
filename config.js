@@ -8,11 +8,11 @@ const PLAYLIST_LANDSCAPE = [
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: 'YpV8qvzXvcU', label: 'SCamp 2026', campaign: 'scamp' }
+  { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' }
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 1,
+  syncIntervalMinutes: 2,
   dailyReloadHour: 8,
   dailyReloadMinute: 0,
   showStatusBar: true,
