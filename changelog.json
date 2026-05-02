@@ -1,5 +1,14 @@
 [
   {
+    "ts": 1777689382013,
+    "changes": [
+      "Landscape +Added \"SCamp 2026\" (YouTube) at #1",
+      "Landscape -Removed \"SCamp 2026\" (was #1)",
+      "Portrait +Added \"SCamp 2026\" (YouTube) at #1",
+      "Portrait -Removed \"SCamp 2026\" (was #1)"
+    ]
+  },
+  {
     "ts": 1777550230106,
     "changes": [
       "Portrait ~Campaign \"SCamp 2026\": (always) -> scamp"
