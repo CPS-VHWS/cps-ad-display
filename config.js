@@ -11,7 +11,10 @@ const PLAYLIST_LANDSCAPE = [
 ];
 
 const PLAYLIST_PORTRAIT = [
-  { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' }
+  { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
+  { id: '-9d37qCzhAs', label: 'Lên đời Smartphone mới', campaign: 'trade' },
+  { id: 'Djl36n4AdLw', label: 'Mua laptop trúng Balo', campaign: 'trade' },
+  { id: 'MFLGVWh3R4k', label: 'Bộ phụ kiện GenZ và Quà Limited', campaign: 'trade' }
 ];
 
 const APP_CONFIG = {
