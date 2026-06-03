@@ -5,9 +5,9 @@
 
 const PLAYLIST_LANDSCAPE = [
   { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'uu_52j5NxG8', duration: 36, label: 'TRANG BỊ "TẬN RĂNG" CHO NĂM HỌC MỚI: BỘ PHỤ KIỆN GEN Z & QUÀ LIMITED 2026! 🎧🔥', campaign: 'trade' },
-  { id: 'Javr2nYWOxI', duration: 37, label: 'MUA LAPTOP TẶNG BALO 600K & QUÀ PHIÊN BẢN GIỚI HẠN: HÀNH TRANG VỮNG VÀNG VÀO ĐẠI HỌC! 💻🎓', campaign: 'trade' },
-  { id: 'aCJFpFS6OPE', duration: 31, label: 'LÊN ĐỜI SMARTPHONE MỚI CHỈ 0Đ TRẢ TRƯỚC? ĐẶC QUYỀN SINH VIÊN TẠI BACK TO SCHOOL 2026! 📱✨', campaign: 'trade' }
+  { id: 'aCJFpFS6OPE', duration: 31, label: 'Lên đời smartphone mới', campaign: 'trade' },
+  { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tặng Bali', campaign: 'trade' },
+  { id: 'uu_52j5NxG8', duration: 36, label: 'Bộ phụ kiện GenZ & Quà Limited 2026', campaign: 'trade' }
 ];
 
 const PLAYLIST_PORTRAIT = [
@@ -15,7 +15,7 @@ const PLAYLIST_PORTRAIT = [
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 4,
+  syncIntervalMinutes: 8,
   dailyReloadHour: 8,
   dailyReloadMinute: 0,
   showStatusBar: true,
