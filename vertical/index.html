@@ -85,6 +85,7 @@
   let globalWatchdog = null;
   let _lastDriftCheck = 0;
   let _playerErrored = false;
+  let _errorCount = 0;
   let ytSkipWatchdog = null;
   let _clockOffset = 0;
 
@@ -118,11 +119,23 @@
     startGlobalWatchdog();
     setupIdleFullscreen();
   }
-  function onPlayerStateChange(e) { if (e.data === 0) syncAndPlay(); }
+  function onPlayerStateChange(e) {
+    if (e.data === 1) _errorCount = 0;
+    if (e.data === 0) syncAndPlay();
+  }
   function onPlayerError(e) {
     console.warn('[AdDisplay:Portrait] Error:', e.data);
-    _playerErrored = true;
-    setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay);
+    _errorCount++;
+    if (_errorCount >= 3) {
+      console.warn('[AdDisplay:Portrait] Skip after 3 errors on index', currentIndex);
+      _errorCount = 0;
+      _playerErrored = false;
+      currentIndex = (currentIndex + 1) % PLAYLIST.length;
+      setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay);
+    } else {
+      _playerErrored = true;
+      setTimeout(syncAndPlay, APP_CONFIG.errorSkipDelay);
+    }
   }
 
   function getAbsoluteSyncState() {
