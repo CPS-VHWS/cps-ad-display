@@ -74,6 +74,21 @@
     .video-label { font-size:14px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .video-meta { font-size:12px; color:var(--muted); margin-top:3px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .video-id { font-family:monospace; background:var(--surface2); padding:2px 6px; border-radius:4px; }
+
+    /* Inline edit inputs */
+    .edit-label {
+      width:100%; background:transparent; border:none; border-bottom:1px dashed transparent;
+      color:var(--text); font-size:14px; font-weight:500; padding:0; outline:none;
+      cursor:text; transition:border-color .15s;
+    }
+    .edit-label:hover { border-bottom-color:var(--border); }
+    .edit-label:focus { border-bottom-color:var(--accent); background:var(--surface2); padding:2px 6px; border-radius:5px 5px 0 0; border-bottom:1px solid var(--accent); }
+    .edit-dur {
+      width:70px; background:transparent; border:none; border-bottom:1px dashed transparent;
+      color:var(--muted); font-size:12px; padding:0; outline:none; cursor:text; transition:border-color .15s;
+    }
+    .edit-dur:hover { border-bottom-color:var(--border); }
+    .edit-dur:focus { border-bottom-color:var(--accent); background:var(--surface2); padding:1px 5px; border-radius:4px 4px 0 0; color:var(--text); }
     .badge { font-size:10px; font-weight:600; padding:1px 6px; border-radius:8px; }
     .badge-yt    { background:rgba(255,0,0,.12);   color:#ff7070; }
     .badge-drive { background:rgba(66,133,244,.15); color:#6ba3ff; }
@@ -594,7 +609,12 @@ function render() {
     const thumbEl  = isYT
       ? `<img class="thumb" src="${thumbUrl(v.id)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt=""><div class="thumb-ph" style="display:none;">▶</div>`
       : `<div class="thumb-ph">${isImg ? '🖼' : '☁'}<br><span style="font-size:9px">${isDrv?'Drive':'Image'}</span></div>`;
-    const durEl     = v.duration ? `<span>${v.duration}s</span>` : `<span class="warn">⚠ chưa có duration${isImg?' (mặc định 5s)':''}</span>`;
+    const durPlaceholder = isImg ? 'giây (mặc định 5)' : 'giây ⚠';
+    const durEl = `<input class="edit-dur" type="number" min="1"
+        value="${v.duration||''}" placeholder="${durPlaceholder}"
+        title="Duration (giây) — nhấn Enter để lưu"
+        onchange="updateDuration('${activeTab}',${i},this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()">`;
     const hcmChk    = !v.regions || v.regions.includes('hcm') ? 'checked' : '';
     const hnChk     = !v.regions || v.regions.includes('hn')  ? 'checked' : '';
     const noRegWarn = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
@@ -609,7 +629,11 @@ function render() {
       <div class="drag-handle" title="${isFiltered?'Xoá bộ lọc để sắp xếp':'Kéo để sắp xếp'}" style="${isFiltered?'opacity:.25;cursor:not-allowed;':''}">⠿</div>
       ${thumbEl}
       <div class="video-info">
-        <div class="video-label">${escHtml(v.label||`Mục ${i+1}`)}</div>
+        <input class="edit-label" type="text"
+          value="${escHtml(v.label||'')}" placeholder="Tên video"
+          title="Tên hiển thị — nhấn Enter để lưu"
+          onchange="updateLabel('${activeTab}',${i},this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()">
         <div class="video-meta">
           <span class="badge ${badgeCls}">${badgeTxt}</span>
           <span class="video-id">${v.id.length>16?v.id.slice(0,16)+'…':v.id}</span>
@@ -738,6 +762,17 @@ function updateRegion(tab, i, region, checked) {
   regions.sort();
   if (regions.length === 2) delete v.regions; else v.regions = regions;
   markDirty(true); render();
+}
+function updateLabel(tab, i, val) {
+  playlists[tab][i].label = val.trim();
+  markDirty(true);
+}
+function updateDuration(tab, i, val) {
+  const d = parseInt(val);
+  if (d > 0) playlists[tab][i].duration = d;
+  else delete playlists[tab][i].duration;
+  markDirty(true);
+  updateDurSummary();
 }
 function updateSkipEnd(tab, i, checked) {
   if (checked) playlists[tab][i].skipEnd = true; else delete playlists[tab][i].skipEnd;
