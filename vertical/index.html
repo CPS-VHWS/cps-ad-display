@@ -186,14 +186,15 @@
       document.getElementById('gd-player').src = 'about:blank';
       if (!isReady || !player) return;
 
+      const safeOffset = v.duration ? state.offsetSec : 0;
       const ytState = player.getPlayerState();
       const canSeek = isSameVideo && !_playerErrored && (ytState === 1 || ytState === 2 || ytState === 3);
       if (canSeek) {
-        player.seekTo(state.offsetSec, true);
+        player.seekTo(safeOffset, true);
         if (ytState !== 1) player.playVideo();
       } else {
         _playerErrored = false;
-        player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
+        player.loadVideoById({ videoId: v.id, startSeconds: safeOffset });
         _muted ? player.mute() : player.unMute();
       }
 

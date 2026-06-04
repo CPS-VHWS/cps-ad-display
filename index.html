@@ -181,16 +181,16 @@
       document.getElementById('gd-player').src = 'about:blank';
       if (!isReady || !player) return;
 
+      // Chỉ seek vào giữa video nếu config có duration — tránh seek vượt quá độ dài thực
+      const safeOffset = v.duration ? state.offsetSec : 0;
       const ytState = player.getPlayerState();
       const canSeek = isSameVideo && !_playerErrored && (ytState === 1 || ytState === 2 || ytState === 3);
       if (canSeek) {
-        // Cùng video, đang play/pause/buffer — seekTo, không tải lại
-        player.seekTo(state.offsetSec, true);
+        player.seekTo(safeOffset, true);
         if (ytState !== 1) player.playVideo();
       } else {
-        // Video khác, hoặc vừa lỗi, hoặc player chưa sẵn — reload hoàn toàn
         _playerErrored = false;
-        player.loadVideoById({ videoId: v.id, startSeconds: state.offsetSec });
+        player.loadVideoById({ videoId: v.id, startSeconds: safeOffset });
         _muted ? player.mute() : player.unMute();
       }
     }
