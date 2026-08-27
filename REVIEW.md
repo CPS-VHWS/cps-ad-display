@@ -60,6 +60,11 @@ _Last reviewed: 2026-08-27_
 |---|------|---------|
 | F1 | `config-watcher.js`, `index.html`, `vertical/index.html`, `functions/api/heartbeat.js`, `admin.html` | **Device heartbeat / online count.** Mỗi máy tự sinh 1 `deviceId` random lưu `localStorage`, gửi POST `/api/heartbeat` (id, mode, region, campaign) theo đúng nhịp `syncIntervalMinutes` (dùng chung interval với config-watcher, không thêm timer riêng). Function ghi vào Cloudflare KV với `expirationTtl: 1800`s — máy ngừng báo cáo quá 30 phút tự "rớt" khỏi danh sách, không cần logic lọc thời gian riêng. Admin Dashboard có panel "📡 Máy đang online" (đếm + bảng chi tiết mode/region/campaign/lần cuối), tự refresh mỗi 30s. Endpoint GET yêu cầu `ADMIN_API_KEY` như các API khác; POST không auth (không có gì nhạy cảm, tệ nhất là heartbeat giả không ảnh hưởng hiển thị video). **Cần thêm 1 KV namespace binding (`HEARTBEAT_KV`) trên Cloudflare Dashboard trước khi dùng được** — xem `setup.md` §3.1d. `sw.js` cache bump `v4` → `v5` để máy đã cài nhận code mới (config-watcher.js là shell asset, cache-first) |
 
+**Verified live trên production sau merge (2026-08-27):**
+- `POST /api/heartbeat` → `{"ok":true}`, `GET /api/heartbeat` (kèm `ADMIN_API_KEY`) trả đúng device vừa ghi.
+- **KV eventual consistency**: ghi xong đọc lại ngay có thể trả rỗng — mất **~5-10s** để propagate qua edge. Đừng hoảng nếu test thấy `count:0` ngay sau khi POST, đợi rồi thử lại trước khi nghi ngờ có bug.
+- **Deploy propagation**: gọi route Function mới ngay sau khi Cloudflare báo "Deploy successful" có thể vẫn nhận fallback `index.html` (200, `content-type: text/html`) trong vài giây đầu trước khi routing đồng bộ hết edge — không phải lỗi thật, retry sau ~10-15s là ổn định.
+
 ---
 
 ## NOT BUGS (False Alarms)
