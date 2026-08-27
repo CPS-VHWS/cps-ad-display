@@ -783,6 +783,17 @@ function addCampaign() {
   markDirty(true);
 }
 function removeCampaign(name) {
+  // Video vẫn giữ tag của campaign đã xoá sẽ thành "mồ côi": chỉ phát trên
+  // thiết bị có ?c=<tên đã xoá> — mà tên đó không còn trong UI để admin thấy.
+  // Nên phải gỡ tag khỏi video luôn, và nói rõ số video bị ảnh hưởng.
+  const affected = [...playlists.landscape, ...playlists.portrait].filter(v => v.campaign === name);
+  if (affected.length && !confirm(
+    `Có ${affected.length} video đang gắn chương trình "${name}".\n\n` +
+    `Xoá chương trình sẽ chuyển các video này về "Luôn chạy" (phát ở mọi thiết bị).\n\nTiếp tục?`
+  )) return;
+  for (const tab of ['landscape', 'portrait']) {
+    playlists[tab].forEach(v => { if (v.campaign === name) delete v.campaign; });
+  }
   campaignList = campaignList.filter(c => c !== name);
   renderCampaignChips();
   render();
@@ -947,12 +958,16 @@ function importCSV() {
             const isAll  = parsed.includes('hcm') && parsed.includes('hn');
             if (!isAll) entry.regions = parsed;
           }
-          // campaign
+          // campaign — nhớ đăng ký vào campaignList, nếu không video sẽ mang tag
+          // không tồn tại trong UI (card hiện "Luôn chạy" nhưng config ghi tag thật)
           const camp = col('campaign') >= 0 ? (row[col('campaign')] || '') : '';
-          if (camp) entry.campaign = camp.toLowerCase();
+          if (camp) {
+            entry.campaign = camp.toLowerCase();
+            if (!campaignList.includes(entry.campaign)) campaignList.push(entry.campaign);
+          }
           playlists[activeTab].push(entry); added++;
         }
-        markDirty(true); render();
+        markDirty(true); renderCampaignChips(); render();
         toast(`Import ${activeTab === 'landscape' ? 'Ngang' : 'Dọc'}: +${added} mục`, 'success');
       } catch(err) { toast('Lỗi đọc CSV: ' + err.message, 'error'); }
     };
@@ -1064,8 +1079,13 @@ async function loadFromGitHub() {
     if (cfg) {
       document.getElementById('cfg-sync').value        = cfg.syncIntervalMinutes ?? 5;
       document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
-      if (cfg.campaigns?.length) { campaignList = cfg.campaigns; renderCampaignChips(); }
     }
+    // Gộp cả campaign đang được video sử dụng: config cũ có thể chứa tag không
+    // nằm trong APP_CONFIG.campaigns — nếu bỏ qua, card sẽ hiện "Luôn chạy" trong
+    // khi dữ liệu thật vẫn mang tag đó (sai lệch âm thầm).
+    const usedCamp = [...playlists.landscape, ...playlists.portrait].map(v => v.campaign).filter(Boolean);
+    campaignList = [...new Set([...(cfg?.campaigns || []), ...usedCamp])];
+    renderCampaignChips();
     snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
     markDirty(false); render();
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
