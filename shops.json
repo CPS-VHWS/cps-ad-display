@@ -1,1 +1,710 @@
-[]
+[
+  {
+    "name": "CPS-HNO-HBT-51DCV",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-DNA-TK-369NVL",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-QBI-DH-117THD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HPH-HPH-162LT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HPH-HPH-163ADN",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HDO-267QT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-BGI-BGI-135HV",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-QNI-HGA-19THD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HDU-HDU-6NLB",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HTI-HTI-81TP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-NAN-VIN-61LL",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-PTH-VTR-2379HV",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-CGI-48TDH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-GLA-51NXQ",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-TNG-TNG-200HVT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-LBI-252NGT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-TXU-300NT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DDA-133TH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HMA-546TD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HDO-140VP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-DNA-TKH-313DBP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-VPH-VYE-3ML",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-BNI-BNI-334THD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-THO-THO-260TP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-CGI-310CG",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-BNI-TSO-242TP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-BTL-244PVD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DAN-21CL",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-LBI-280NVC",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-THO-126LLQ",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DPH-89TS",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-THO-HTH-745BT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-PTH-HBI-321CCL",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-TTI-102PG",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HYE-PHI-138ADB",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HBT-282MK",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-BDE-345NVC",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-NBI-HLU-933THD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-QNI-BCH-690HL",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-DNA-LCH-749TDT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-DNA-STR-11NVT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DNO-770QT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-CGI-126HTM",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-CGI-160NKT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DDA-21TH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-DDA-360XD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HDO-87PH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HDU-679VX",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HKI-21AHB",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HKI-55AHB",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-HMA-265LN",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-NTL-283HTM",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-NTL-50LQD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-TTR-361NH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-TXU-543NT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HPH-HPH-278TNH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HUE-PHO-5HV",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-LSO-LSO-9TDN",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-NDI-NDI-159THD",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-QNI-CPH-213TP",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-TBI-TBI-333LB",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-DNA-HCU-329NHT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-AKH-42A10LTT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-PDI-248HTM",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-THO-143NT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HPH-HAN-78NGT",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-NBI-HNA-276LH",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HCM-Q07-435NTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q01-55BTQK",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-CTH-NKI-272BMTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BRI-VTA-491BMTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-BHO-57PVT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-AGI-LXG-912THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TBI-956AC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-TDM-427DLBD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-GVA-567LQD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q07-571HTP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-BHO-7BVH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-TAN-100NVT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DLA-BMT-116PBC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-CTH-NKI-133CMTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-AGI-LXG-1393THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q02-139TN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-LKH-175HV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-TNI-TBG-214QL22",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-TDM-183PL",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-TNI-TNI-855CMT8",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-TAN-63HHMH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-KHO-NTR-3TN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-CMA-CMA-34THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LDO-DLA-04NVC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-KGI-PQU-35HV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BTH-PTH-165THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-GVA-525AQT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LAN-BLU-82NHT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-STR-STR-91HV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TDU-943KVC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TBI-672AC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-KGI-RGI-117NTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q06-460HG",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LAN-TAN-122HV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-CCH-193TL8",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TPH-472LTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-DAN-253NAN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q12-93/8CNAT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-TVI-TVI-24DBP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-GVA-272NO",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TPH-161NS",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q02-190NTD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q10-347NTP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-PNH-114PDL",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-HMO-4/39QT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TPH-449TKTQ",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-TGI-MTO-472AB",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-NBE-1716HTP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q08-579DBT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BTA-888TL10",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TBI-190BHVT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BCH-C3PH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q10-288BTH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TDU-18VVN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TBI-359CH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BTH-377DBP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q09-241DXH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q11-457LDH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q07-248NTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DTH-SAD-103HV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-THO-488N5",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-VLO-LCH-4LTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-CTH-VTH-78NCT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-LXU-71TNV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-PMY-839DL",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q01-134NTH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-AGI-CDO-272LL",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-AGI-RGI-405NTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDU-TAU-156DT747",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BLI-BLI-289TP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BRI-BRI-31NHT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BTR-BTR-15DK",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-CTH-TAN-141NVC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-LTH-307LD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-THI-F1DK",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-GLA-PKU-21QT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BTA-386HL2",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BTH-536XVNT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-CCH-58TL8",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-GVA-59QT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q01-157NTMK",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q04-177KH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q05-785THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q09-125LVV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q09-241LVV",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TDO-2LHP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-TDU-632AKVC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LDO-DTR-81TN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-NTH-PHR-339TN",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-QNG-QNG-289QT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BDI-QNH-669THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BPH-DXO-968PRD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-BRI-VTA-165LHP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DTH-CLA-81NH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-BTA-127NTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q01-220TQK",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q06-1075BHG",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q12-1ANAT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-VLO-VLO-56DPTB",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-NTR-237LTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DON-TBO-58BMTT",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-KHO-BNT-1HC",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LDO-BLO-739TP",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-LDO-DLA-279BTX",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-VLO-PKH-300ADHM",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-HCM-Q12-17PVH",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DLA-THO-105THD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-DLA-EKA-429LD",
+    "region": "mn"
+  },
+  {
+    "name": "CPS-QTR-DHA-11HV",
+    "region": "mb"
+  },
+  {
+    "name": "CPS-HNO-PDI-44CD",
+    "region": "mb"
+  }
+]
