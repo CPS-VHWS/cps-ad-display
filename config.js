@@ -5,9 +5,9 @@
 
 const PLAYLIST_LANDSCAPE = [
   { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'aCJFpFS6OPE', duration: 31, label: 'LÃÂªn ÃÂÃ¡Â»Âi smartphone mÃ¡Â»Âi', campaign: 'trade' },
-  { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tÃ¡ÂºÂ·ng Bali', campaign: 'trade' },
-  { id: 'uu_52j5NxG8', duration: 30, label: 'BÃ¡Â»Â phÃ¡Â»Â¥ kiÃ¡Â»Ân GenZ & QuÃÂ  Limited 2026', campaign: 'trade' },
+  { id: 'aCJFpFS6OPE', duration: 31, label: 'Lên đời smartphone mới', campaign: 'trade' },
+  { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tặng balo', campaign: 'trade' },
+  { id: 'uu_52j5NxG8', duration: 30, label: 'Bộ phụ kiện GenZ & Quà Limited 2026', campaign: 'trade' },
   { id: '7doGCi1sBXY', label: 'DEMO MDM LAPTOP CAMP 2/9', campaign: 'trade' }
 ];
 
@@ -18,8 +18,6 @@ const PLAYLIST_PORTRAIT = [
 
 const APP_CONFIG = {
   syncIntervalMinutes: 8,
-  dailyReloadHour: 8,
-  dailyReloadMinute: 0,
   showStatusBar: true,
   errorSkipDelay: 2000,
   campaigns: ['scamp', 'trade', 'quockhanh'],
