@@ -82,6 +82,12 @@ cps-ad-display/
 ├── admin.html          ← Admin Dashboard — quản lý playlist từ xa
 ├── setup.md            ← File này
 │
+├── functions/           ← Cloudflare Pages Functions (server-side, không public code)
+│   ├── _shared.js       ← Helper gọi GitHub API bằng GITHUB_TOKEN secret
+│   └── api/
+│       ├── config.js    ← Proxy đọc/ghi config.js — route /api/config
+│       └── changelog.js ← Proxy đọc/ghi changelog.json — route /api/changelog
+│
 ├── icons/
 │   ├── icon-192.png    ← Icon PWA 192×192px
 │   └── icon-512.png    ← Icon PWA 512×512px
@@ -97,9 +103,11 @@ cps-ad-display/
 
 ## 3. Cài đặt lần đầu
 
-### 3.1 Lấy GitHub Personal Access Token
+### 3.1 Setup GitHub Token + Admin API Key trên Cloudflare
 
-Token dùng để Admin Dashboard có quyền ghi `config.js` lên GitHub (Cloudflare tự kéo từ GitHub).
+Từ bản cập nhật này, **GitHub Token thật không còn nằm trong trình duyệt** — Admin Dashboard gọi qua Cloudflare Pages Function (`/api/config`, `/api/changelog`), Function giữ token và gọi GitHub thay bạn. Trình duyệt chỉ cầm 1 **Admin API Key** riêng (không phải GitHub token) để xác thực với Function.
+
+**a) Tạo GitHub Personal Access Token (PAT):**
 
 1. Đăng nhập GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens**
 2. Nhấn **Generate new token**
@@ -110,15 +118,25 @@ Token dùng để Admin Dashboard có quyền ghi `config.js` lên GitHub (Cloud
    - **Permissions → Contents**: `Read and write`
 4. Nhấn **Generate token** → **sao chép ngay** (chỉ hiện 1 lần)
 
-> ⚠️ **Không dán token vào code hoặc commit lên GitHub.** Token lưu trong localStorage trình duyệt admin, không bao giờ lên server.
+**b) Tạo Admin API Key** (chuỗi bí mật tuỳ ý, ví dụ chạy `openssl rand -hex 24` để sinh ngẫu nhiên) — đây là "mật khẩu" bạn sẽ dán vào admin.html, không phải GitHub token.
+
+**c) Set 2 secret trên Cloudflare Pages Dashboard:**
+
+1. Vào **Cloudflare Dashboard → Workers & Pages → cps-ad-display → Settings → Environment variables**
+2. Thêm 2 biến, cả 2 chọn **Encrypt** (Secret):
+   - `GITHUB_TOKEN` = token vừa tạo ở bước (a)
+   - `ADMIN_API_KEY` = key vừa tạo ở bước (b)
+3. Redeploy (hoặc chờ lần deploy tiếp theo) để Function nhận biến mới
+
+> ⚠️ **Không bao giờ commit token/key vào code.** Cả 2 chỉ tồn tại dưới dạng secret trên Cloudflare — không nằm trong repo, không nằm trong trình duyệt admin lâu dài.
 
 ### 3.2 Truy cập Admin Dashboard lần đầu
 
 1. Mở `https://cps-ad-display.pages.dev/admin.html`
 2. Nhập PIN: **`0526`**
-3. Dán GitHub Token vào ô **Personal Access Token**
+3. Dán **Admin API Key** (bước 3.1b) vào ô **Admin API Key**
 4. Nhấn **↓ Tải playlist từ GitHub** để load playlist hiện tại
-5. Từ lần sau token được nhớ tự động (lưu trong trình duyệt)
+5. Key chỉ lưu trong tab hiện tại (sessionStorage) — đóng browser phải dán lại
 
 ---
 
@@ -130,7 +148,7 @@ Token dùng để Admin Dashboard có quyền ghi `config.js` lên GitHub (Cloud
 ┌─────────────────────────────────────────────────────┐
 │  Ad Display — Admin                                 │
 │                                                     │
-│  [Kết nối GitHub]  ← Owner / Repo / Token           │
+│  [Kết nối GitHub]  ← Owner / Repo / Admin API Key   │
 │                                                     │
 │  Chương trình: [edu ×] [b2b ×]  [+ Thêm]           │
 │  ← Quản lý danh sách chương trình (campaign)        │
