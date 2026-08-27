@@ -245,12 +245,34 @@
 
   <!-- Devices online -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📡 Máy hoạt động (24h qua) <span id="device-count" class="tab-badge">—</span></div>
-      <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="device-shop-filter" onchange="renderDeviceList()" style="font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px;">
+          <option value="">Tất cả shop</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
+      </div>
     </div>
     <div id="device-list" style="font-size:12px;color:var(--muted);">Chưa tải.</div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">Mỗi máy báo cáo ~2 lần/ngày (giữ trong hạn mức miễn phí của Cloudflare) — nên đây là "máy có hoạt động trong 24h qua", không phải trạng thái online theo thời gian thực.</div>
+  </div>
+
+  <!-- Danh sách Shop -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px;">🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span></div>
+        <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">name, region</code></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: hcm / hn (trống = không gán khu vực).</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" onclick="downloadSampleShopCSV()">↓ File mẫu</button>
+        <button class="btn btn-secondary btn-sm" onclick="importShopCSV()">↑ Upload CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="saveShops()">↑ Lưu lên GitHub</button>
+      </div>
+    </div>
+    <div id="shop-list" style="font-size:12px;color:var(--muted);margin-top:10px;">Chưa tải.</div>
   </div>
 
   <!-- Playlist -->
@@ -984,6 +1006,88 @@ function downloadSampleCSV() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  DANH SÁCH SHOP (shops.json)
+// ═══════════════════════════════════════════════════════════════
+let _shopList = [];
+let _shopSha = null;
+
+async function loadShops() {
+  try {
+    const data = await apiFetch('shops');
+    _shopSha = data.sha;
+    _shopList = JSON.parse(data.content || '[]');
+  } catch(e) { _shopList = []; }
+  renderShopList();
+}
+
+function renderShopList() {
+  const el = document.getElementById('shop-list');
+  document.getElementById('shop-count').textContent = _shopList.length;
+  if (!_shopList.length) { el.innerHTML = 'Chưa có shop nào — tải file mẫu, điền rồi upload.'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Tên shop</th><th style="padding:4px 6px;">Khu vực</th><th></th></tr>
+    ${_shopList.map((s,i) => `<tr style="border-top:1px solid var(--border);">
+      <td style="padding:4px 6px;">${escHtml(s.name)}</td>
+      <td style="padding:4px 6px;">${escHtml(s.region || '—')}</td>
+      <td style="padding:4px 6px;text-align:right;"><button class="btn btn-secondary btn-sm" onclick="removeShop(${i})">Xoá</button></td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+function removeShop(i) {
+  _shopList.splice(i, 1);
+  renderShopList();
+}
+
+function importShopCSV() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.csv,text/csv';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const rows = ev.target.result.trim().split(/\r?\n/).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g,'')));
+        const header = rows[0].map(h => h.toLowerCase());
+        const col = k => header.indexOf(k);
+        let added = 0;
+        for (let i=1; i<rows.length; i++) {
+          const row = rows[i];
+          const name = row[col('name')] || '';
+          const region = col('region') >= 0 ? (row[col('region')] || '') : '';
+          if (!name) continue;
+          if (_shopList.some(s => s.name === name)) continue;
+          _shopList.push({ name, region: region.toLowerCase() });
+          added++;
+        }
+        renderShopList();
+        toast(`Import shop: +${added} shop`, 'success');
+      } catch(err) { toast('Lỗi đọc CSV: ' + err.message, 'error'); }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+  inp.click();
+}
+
+function downloadSampleShopCSV() {
+  const csv = `name,region\nCellphoneS Nguyen Trai Q5,hcm\nCellphoneS Cau Giay,hn\n`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'shops-sample.csv'; a.click();
+}
+
+async function saveShops() {
+  try {
+    toast('Đang lưu...', 'info');
+    const body = { content: JSON.stringify(_shopList, null, 2) };
+    if (_shopSha) body.sha = _shopSha;
+    const data = await apiFetch('shops', { method:'PUT', body: JSON.stringify(body) });
+    _shopSha = data.sha;
+    toast('Đã lưu danh sách shop lên GitHub', 'success');
+  } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  BUILD CONFIG.JS
 // ═══════════════════════════════════════════════════════════════
 function buildConfigJs() {
@@ -1091,6 +1195,7 @@ async function loadFromGitHub() {
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
     loadChangelog();
     loadDevices();
+    loadShops();
     // 5 phút/lần và chỉ khi tab đang hiện: hạn mức list của KV free tier là
     // 1.000/ngày — refresh 30s như trước sẽ đốt sạch chỉ sau ~8 tiếng mở tab.
     if (!_deviceRefreshTimer) {
@@ -1214,25 +1319,47 @@ function timeAgo(ts) {
   if (m < 60) return `${m} phút trước`;
   return `${Math.floor(m / 60)}h ${m % 60}p trước`;
 }
+let _devicesCache = [];
+
 async function loadDevices() {
   const countEl = document.getElementById('device-count');
   const listEl  = document.getElementById('device-list');
   try {
     const data = await apiFetch('heartbeat');
+    _devicesCache = data.devices || [];
     countEl.textContent = data.count;
-    if (!data.count) { listEl.innerHTML = 'Chưa có máy nào báo cáo — chờ máy tự reload lần tới (tối đa ~1 giờ sau khi deploy code mới).'; return; }
+
+    // Đổ danh sách shop có máy báo cáo vào bộ lọc (giữ lựa chọn hiện tại nếu còn hợp lệ)
+    const filterEl = document.getElementById('device-shop-filter');
+    const prevVal = filterEl.value;
+    const shopNames = [...new Set(_devicesCache.map(d => d.shopName).filter(Boolean))].sort();
+    filterEl.innerHTML = '<option value="">Tất cả shop</option>' +
+      shopNames.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+    if (shopNames.includes(prevVal)) filterEl.value = prevVal;
+
+    renderDeviceList();
+  } catch(e) { countEl.textContent = '—'; listEl.innerHTML = `<span style="color:var(--danger);">Lỗi: ${escHtml(e.message)}</span>`; }
+}
+
+function renderDeviceList() {
+  const listEl = document.getElementById('device-list');
+  const filter = document.getElementById('device-shop-filter').value;
+  const devices = filter ? _devicesCache.filter(d => d.shopName === filter) : _devicesCache;
+  if (!_devicesCache.length) { listEl.innerHTML = 'Chưa có máy nào báo cáo — chờ máy tự reload lần tới (tối đa ~1 giờ sau khi deploy code mới).'; return; }
+  if (!devices.length) { listEl.innerHTML = 'Không có máy nào khớp bộ lọc.'; return; }
     listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Bản app</th><th style="padding:4px 6px;">Lỗi gần nhất</th><th style="padding:4px 6px;">Lần cuối</th></tr>
-      ${data.devices.map(d => `<tr style="border-top:1px solid var(--border);">
+      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Shop</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Thiết bị</th><th style="padding:4px 6px;">Bản app</th><th style="padding:4px 6px;">Lỗi gần nhất</th><th style="padding:4px 6px;">Lần cuối</th></tr>
+      ${devices.map(d => `<tr style="border-top:1px solid var(--border);">
         <td style="padding:4px 6px;">${d.mode === 'portrait' ? '▮ Dọc' : '▬ Ngang'}</td>
+        <td style="padding:4px 6px;">${escHtml(d.shopName || '—')}</td>
         <td style="padding:4px 6px;">${escHtml(d.region || 'tất cả')}</td>
         <td style="padding:4px 6px;">${escHtml(d.campaign || 'luôn chạy')}</td>
+        <td style="padding:4px 6px;color:var(--muted);">${escHtml(d.deviceModel || '—')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${escHtml(d.appVersion || '—')}</td>
         <td style="padding:4px 6px;${d.lastError ? 'color:var(--danger);' : 'color:var(--muted);'}">${escHtml(d.lastError || '—')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${timeAgo(d.lastSeen)}</td>
       </tr>`).join('')}
     </table>`;
-  } catch(e) { countEl.textContent = '—'; listEl.innerHTML = `<span style="color:var(--danger);">Lỗi: ${escHtml(e.message)}</span>`; }
 }
 
 async function loadChangelog() {

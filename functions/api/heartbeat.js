@@ -27,7 +27,9 @@ export async function onRequestPost({ request, env }) {
       mode: body.mode === 'portrait' ? 'portrait' : 'landscape',
       region: body.region ? String(body.region).slice(0, 32) : null,
       campaign: body.campaign ? String(body.campaign).slice(0, 32) : null,
+      shopName: body.shopName ? String(body.shopName).slice(0, 64) : null,
       appVersion: body.appVersion ? String(body.appVersion).slice(0, 16) : null,
+      deviceModel: body.deviceModel ? String(body.deviceModel).slice(0, 48) : null,
       lastError: body.lastError ? String(body.lastError).slice(0, 32) : null,
       lastSeen: Date.now(),
     };

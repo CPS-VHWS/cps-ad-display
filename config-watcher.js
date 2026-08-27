@@ -49,10 +49,12 @@ function startHeartbeat(info) {
 
   if (Date.now() - lastPing < HEARTBEAT_MIN_GAP_MS) return;
 
-  // App Android gắn version vào User-Agent dạng "CPSDisplayApp/1.0.2" — lấy ra nếu có,
-  // để admin biết máy đang chạy bản app nào mà không cần thêm lượt gọi mạng riêng.
+  // App Android gắn version + model máy vào User-Agent (CPSDisplayApp/1.0.3,
+  // CPSDisplayModel/samsung_SM-G991B) — lấy ra nếu có, không tốn thêm lượt gọi mạng.
   const uaMatch = navigator.userAgent.match(/CPSDisplayApp\/([\w.]+)/);
   const appVersion = uaMatch ? uaMatch[1] : null;
+  const modelMatch = navigator.userAgent.match(/CPSDisplayModel\/([\w.-]+)/);
+  const deviceModel = modelMatch ? modelMatch[1].replace(/_/g, ' ') : null;
 
   // Lỗi gần nhất (nếu có) trong phiên hiện tại — chỉ báo nếu xảy ra trong 1 giờ gần đây,
   // tránh báo lỗi cũ đã tự phục hồi từ lâu.
@@ -64,7 +66,7 @@ function startHeartbeat(info) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       id, mode: info.mode, region: info.region || null, campaign: info.campaign || null,
-      appVersion, lastError,
+      shopName: info.shop || null, appVersion, deviceModel, lastError,
     }),
     keepalive: true,
   })
