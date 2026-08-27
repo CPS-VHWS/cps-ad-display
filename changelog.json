@@ -1,5 +1,16 @@
 [
   {
+    "ts": 1787818729204,
+    "changes": [
+      "Landscape ~Campaign \"DEMO MDM LAPTOP CAMP 2/9\": quockhanh -> trade",
+      "Portrait -Removed \"LÃÂªn ÃÂÃ¡Â»Âi Smartphone mÃ¡Â»Âi\" (was #2)",
+      "Portrait -Removed \"Mua laptop trÃÂºng Balo\" (was #3)",
+      "Portrait -Removed \"BÃ¡Â»Â phÃ¡Â»Â¥ kiÃ¡Â»Ân GenZ vÃÂ  QuÃÂ  Limited\" (was #4)",
+      "Portrait ^Moved \"DEMO MDM ĐIỆN THOẠI CAMP 2/9\" #5 -> #2",
+      "Portrait ~Campaign \"DEMO MDM ĐIỆN THOẠI CAMP 2/9\": quockhanh -> trade"
+    ]
+  },
+  {
     "ts": 1787818640107,
     "changes": [
       "Landscape +Added \"DEMO MDM LAPTOP CAMP 2/9\" (YouTube) at #5",
