@@ -1,5 +1,5 @@
 # Code Review Log — cps-ad-display
-_Last reviewed: 2026-05-01_
+_Last reviewed: 2026-05-02_
 
 ---
 
@@ -41,6 +41,11 @@ _Last reviewed: 2026-05-01_
 | 32 | `config-watcher.js` | Không có guard concurrent fetch — nếu server chậm, 2 fetch có thể chạy song song, cái sau ghi đè fingerprint cái trước | Thêm `fetching` flag, bỏ qua nếu đang có fetch in-flight |
 | 33 | `index.html` / `vertical/index.html` | `getAbsoluteSyncState()` dùng `Date.now()` — đồng hồ máy lệch → các màn phát lệch scene | Thêm `syncServerClock()`: đo offset theo NTP half-RTT từ HTTP `Date` header của Cloudflare. Thay `Date.now()` bằng `serverNow() = Date.now() + _clockOffset` |
 | 34 | `index.html` / `vertical/index.html` | Playlist 1 video: khi video kết thúc gọi `loadVideoById` lại → overhead YouTube load pipeline | Đổi sang `seekTo(offsetSec) + playVideo()` khi `isSameVideo && ytState !== -1`; chỉ gọi `loadVideoById` khi thực sự đổi video |
+| 35 | `index.html` / `vertical/index.html` | `seekTo` trên player đang lỗi (Error 153, 101...) giữ nguyên error UI thay vì recovery | Thêm `_playerErrored` flag; khi lỗi buộc dùng `loadVideoById` thay `seekTo` ở lần `syncAndPlay` tiếp theo |
+| 36 | `index.html` / `vertical/index.html` | `onPlayerError → syncAndPlay → loadVideoById → lỗi lại` tạo vòng lặp vô hạn mỗi `errorSkipDelay` (2s) → màn hình reload liên tục | Đếm lỗi liên tiếp `_errorCount`; sau 3 lần lỗi cùng 1 video → force skip sang video kế, reset counter. Reset về 0 khi player state = 1 (đang phát) |
+| 37 | `_headers` | `Referrer-Policy: same-origin` không gửi `Referer` cho YouTube (cross-origin) → YouTube không xác định được embed domain → Error 153 trên Safari | Đổi sang `strict-origin-when-cross-origin`: gửi origin (không có path/query) cho cross-origin — YouTube validate được, vẫn an toàn |
+| 38 | `index.html` / `vertical/index.html` | Video không có `duration` trong config → system dùng 60s mặc định, nhưng `getAbsoluteSyncState()` tính `offsetSec` có thể vượt quá độ dài thực của video → YouTube seek past end → state 0 ngay → `syncAndPlay` loop | `safeOffset = v.duration ? state.offsetSec : 0` — video không có duration thì luôn play từ đầu, không seek vào giữa |
+| 39 | `admin.html` | Không có cách sửa tên (`label`) và thời lượng (`duration`) trực tiếp trên card — phải xóa và thêm lại | Thêm inline edit: `label` và `duration` là `<input>` styled, click vào gõ được, Enter/blur để lưu |
 
 ---
 
