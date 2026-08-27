@@ -1,5 +1,12 @@
 [
   {
+    "ts": 1787840066901,
+    "changes": [
+      "Landscape ~Duration \"DEMO MDM LAPTOP CAMP 2/9\": --s -> 15s",
+      "Portrait ~Duration \"DEMO MDM ĐIỆN THOẠI CAMP 2/9\": --s -> 15s"
+    ]
+  },
+  {
     "ts": 1787826128101,
     "changes": [
       "Landscape ~Renamed \"LÃÂªn ÃÂÃ¡Â»Âi smartphone mÃ¡Â»Âi\" -> \"Lên đời smartphone mới\"",
