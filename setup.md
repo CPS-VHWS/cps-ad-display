@@ -86,7 +86,8 @@ cps-ad-display/
 │   ├── _shared.js       ← Helper gọi GitHub API bằng GITHUB_TOKEN secret
 │   └── api/
 │       ├── config.js    ← Proxy đọc/ghi config.js — route /api/config
-│       └── changelog.js ← Proxy đọc/ghi changelog.json — route /api/changelog
+│       ├── changelog.js ← Proxy đọc/ghi changelog.json — route /api/changelog
+│       └── heartbeat.js ← Nhận báo cáo "còn sống" từ máy hiển thị — route /api/heartbeat
 │
 ├── icons/
 │   ├── icon-192.png    ← Icon PWA 192×192px
@@ -129,6 +130,16 @@ Từ bản cập nhật này, **GitHub Token thật không còn nằm trong trì
 3. Redeploy (hoặc chờ lần deploy tiếp theo) để Function nhận biến mới
 
 > ⚠️ **Không bao giờ commit token/key vào code.** Cả 2 chỉ tồn tại dưới dạng secret trên Cloudflare — không nằm trong repo, không nằm trong trình duyệt admin lâu dài.
+
+**d) Tạo KV namespace cho tính năng "Máy đang online" (heartbeat):**
+
+1. Vào **Cloudflare Dashboard → Storage & Databases → KV** → **Create namespace** → đặt tên bất kỳ, ví dụ `cps-ad-display-heartbeat`
+2. Vào lại **Workers & Pages → cps-ad-display → Settings → Functions → KV namespace bindings** → **Add binding**
+   - Variable name: `HEARTBEAT_KV` (đúng tên này, code đọc theo tên biến)
+   - KV namespace: chọn namespace vừa tạo
+3. Save → redeploy để Function nhận binding mới
+
+Không làm bước này thì mọi thứ khác vẫn chạy bình thường — chỉ riêng panel "📡 Máy đang online" trong Admin sẽ báo lỗi, không ảnh hưởng màn hình hiển thị hay việc lưu playlist.
 
 ### 3.2 Truy cập Admin Dashboard lần đầu
 
@@ -173,6 +184,15 @@ Từ bản cập nhật này, **GitHub Token thật không còn nằm trong trì
 │  Tổng: 3 mục · 4:35    [Export CSV] [Lưu & Deploy]  │
 └─────────────────────────────────────────────────────┘
 ```
+
+### 4.1b Máy đang online
+
+Panel **"📡 Máy đang online"** (dưới box URL thiết bị) hiện số máy đang thực sự chạy, kèm bảng chi tiết: chế độ (ngang/dọc), khu vực, chương trình, lần cuối báo cáo.
+
+- Mỗi máy tự báo cáo về server theo đúng nhịp **"Mốc đồng bộ (phút)"** đã cấu hình — đổi số đó trong "Cài đặt App" thì tần suất báo cáo cũng đổi theo, không cần sửa code.
+- Máy nào ngừng báo cáo quá **30 phút** (mất điện, mất mạng, tắt máy...) sẽ tự biến mất khỏi danh sách — không cần xoá thủ công.
+- Panel tự làm mới mỗi 30 giây khi đang mở Admin Dashboard; hoặc bấm **"↻ Làm mới"** để cập nhật ngay.
+- Sau khi deploy tính năng này lần đầu, máy phải **reload ít nhất 1 lần** (tối đa ~1 giờ, hoặc bật/tắt máy) mới bắt đầu xuất hiện — máy cũ chưa nhận code mới thì chưa báo cáo được.
 
 ### 4.2 Thêm video YouTube
 

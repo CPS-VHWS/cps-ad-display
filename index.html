@@ -112,6 +112,7 @@
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
     syncServerClock();
     scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
+    startHeartbeat({ mode: 'landscape', region: _region, campaign: _campaign });
     syncAndPlay();
     startGlobalWatchdog();
   }

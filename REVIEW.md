@@ -54,6 +54,14 @@ _Last reviewed: 2026-08-27_
 
 ---
 
+## Features Added
+
+| # | File | Feature |
+|---|------|---------|
+| F1 | `config-watcher.js`, `index.html`, `vertical/index.html`, `functions/api/heartbeat.js`, `admin.html` | **Device heartbeat / online count.** Mỗi máy tự sinh 1 `deviceId` random lưu `localStorage`, gửi POST `/api/heartbeat` (id, mode, region, campaign) theo đúng nhịp `syncIntervalMinutes` (dùng chung interval với config-watcher, không thêm timer riêng). Function ghi vào Cloudflare KV với `expirationTtl: 1800`s — máy ngừng báo cáo quá 30 phút tự "rớt" khỏi danh sách, không cần logic lọc thời gian riêng. Admin Dashboard có panel "📡 Máy đang online" (đếm + bảng chi tiết mode/region/campaign/lần cuối), tự refresh mỗi 30s. Endpoint GET yêu cầu `ADMIN_API_KEY` như các API khác; POST không auth (không có gì nhạy cảm, tệ nhất là heartbeat giả không ảnh hưởng hiển thị video). **Cần thêm 1 KV namespace binding (`HEARTBEAT_KV`) trên Cloudflare Dashboard trước khi dùng được** — xem `setup.md` §3.1d. `sw.js` cache bump `v4` → `v5` để máy đã cài nhận code mới (config-watcher.js là shell asset, cache-first) |
+
+---
+
 ## NOT BUGS (False Alarms)
 
 | Claim | Verdict |
@@ -109,6 +117,8 @@ _Last reviewed: 2026-08-27_
 - **onPlayerReady guard:** YouTube IFrame API documented to sometimes fire `onReady` twice on Android WebView. Guard with `if (isReady) return` prevents double timer accumulation.
 - **Tab coordination:** `BroadcastChannel('cps-display')` — when a tab becomes visible it broadcasts `active`, background tabs with same URL pause their player. Prevents multiple tabs from playing simultaneously on experience machines.
 - **Single-video loop:** When `isSameVideo && ytState !== -1`, uses `seekTo(offsetSec) + playVideo()` instead of `loadVideoById` — avoids re-triggering YouTube's load pipeline, video stays buffered.
+- **Heartbeat / online tracking (F1):** `getDeviceId()` in `config-watcher.js` generates a random id on first run, persisted in `localStorage` — stable across reloads on the same device, resets if the browser's storage is cleared or in a fresh private-mode session. `startHeartbeat()` piggybacks on the same interval as the config poll (no separate timer). `/api/heartbeat` POST is intentionally unauthenticated (low value target — worst case is noise in the online list, not a security issue); GET (used by admin.html) requires `ADMIN_API_KEY`. KV TTL (30 min) does the "is it still online" bookkeeping — no server-side cron or cleanup job needed.
+- **SW cache-invalidation gotcha:** `index.html`, `vertical/index.html`, `config-watcher.js`, and `manifest.json` are precached shell assets served **cache-first** by `sw.js`. `location.reload()` does **not** bypass this — a device that already installed the SW will keep serving the old cached version of these files indefinitely unless `sw.js` itself changes (which forces a fresh install + re-fetch of `SHELL_ASSETS`). **Any future edit to display-page code must bump `CACHE_NAME` in `sw.js`**, or already-deployed kiosks will silently never receive it, even after their scheduled hourly reload.
 
 ---
 
@@ -125,6 +135,7 @@ _Last reviewed: 2026-08-27_
 | `_headers` | Cloudflare Pages — sets `Service-Worker-Allowed: /` + security headers |
 | `functions/_shared.js` | GitHub API helper (auth check, UTF-8 safe base64) — used by both Functions below |
 | `functions/api/config.js` | Pages Function — proxies GET/PUT `config.js` for admin.html, route `/api/config` |
+| `functions/api/heartbeat.js` | Pages Function — POST (public) records device heartbeat in KV; GET (auth) lists online devices for admin.html, route `/api/heartbeat` |
 | `functions/api/changelog.js` | Pages Function — proxies GET/PUT `changelog.json` for admin.html, route `/api/changelog` |
 | `manifest.json` | PWA manifest (landscape) |
 | `vertical/manifest.json` | PWA manifest (portrait) |

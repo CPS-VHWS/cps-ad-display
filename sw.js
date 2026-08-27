@@ -4,7 +4,7 @@
 //  Không cache YouTube stream (luôn lấy trực tiếp từ mạng).
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ad-display-v4';
+const CACHE_NAME = 'ad-display-v5';
 
 // Chỉ cache các file shell của ứng dụng — cả màn ngang lẫn màn dọc,
 // vì cùng 1 service worker (scope gốc '/') phục vụ cho cả 2.
@@ -45,8 +45,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // YouTube API & stream: luôn lấy từ mạng
-  if (url.includes('youtube.com') || url.includes('ytimg.com') || url.includes('googlevideo.com')) {
+  // YouTube API & stream, và mọi gọi API (/api/*, vd heartbeat): luôn lấy từ mạng, không qua cache
+  if (url.includes('youtube.com') || url.includes('ytimg.com') || url.includes('googlevideo.com') || url.includes('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
