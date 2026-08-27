@@ -185,14 +185,18 @@ Không làm bước này thì mọi thứ khác vẫn chạy bình thường —
 └─────────────────────────────────────────────────────┘
 ```
 
-### 4.1b Máy đang online
+### 4.1b Máy hoạt động (24h qua)
 
-Panel **"📡 Máy đang online"** (dưới box URL thiết bị) hiện số máy đang thực sự chạy, kèm bảng chi tiết: chế độ (ngang/dọc), khu vực, chương trình, lần cuối báo cáo.
+Panel **"📡 Máy hoạt động (24h qua)"** (dưới box URL thiết bị) đếm số máy đã báo cáo về trong vòng 1 ngày, kèm bảng chi tiết: chế độ (ngang/dọc), khu vực, chương trình, lần cuối báo cáo.
 
-- Mỗi máy tự báo cáo về server theo đúng nhịp **"Mốc đồng bộ (phút)"** đã cấu hình — đổi số đó trong "Cài đặt App" thì tần suất báo cáo cũng đổi theo, không cần sửa code.
-- Máy nào ngừng báo cáo quá **30 phút** (mất điện, mất mạng, tắt máy...) sẽ tự biến mất khỏi danh sách — không cần xoá thủ công.
-- Panel tự làm mới mỗi 30 giây khi đang mở Admin Dashboard; hoặc bấm **"↻ Làm mới"** để cập nhật ngay.
-- Sau khi deploy tính năng này lần đầu, máy phải **reload ít nhất 1 lần** (tối đa ~1 giờ, hoặc bật/tắt máy) mới bắt đầu xuất hiện — máy cũ chưa nhận code mới thì chưa báo cáo được.
+- Mỗi máy báo cáo **~2 lần/ngày**. Đây không phải trạng thái "online ngay lúc này" — dùng để biết **máy nào còn hoạt động, máy nào đã ngừng hẳn**, không phải để theo dõi thời gian thực.
+- Máy im lặng trọn **26 tiếng** (mất điện, tháo máy, hỏng mạng dài ngày...) sẽ tự biến mất khỏi danh sách — không cần xoá thủ công.
+- Panel tự làm mới mỗi 5 phút khi tab Admin đang hiện; hoặc bấm **"↻ Làm mới"** để cập nhật ngay.
+- Sau khi deploy tính năng này lần đầu, máy phải **reload ít nhất 1 lần** (tối đa ~1 giờ, hoặc bật/tắt máy) mới bắt đầu xuất hiện.
+
+> **Vì sao chỉ 2 lần/ngày?** Cloudflare KV gói miễn phí chỉ cho **1.000 lượt ghi/ngày** cho toàn bộ tài khoản. Báo cáo 2 lần/ngày/máy → chịu được khoảng **500 máy** vẫn miễn phí. Nếu cần theo dõi sát hơn (vd mỗi 30 phút) thì phải nâng gói **Workers Paid ($5/tháng)**.
+>
+> Nếu lỡ vượt hạn mức, màn hình hiển thị **vẫn phát video bình thường** — chỉ panel này ngừng cập nhật.
 
 ### 4.2 Thêm video YouTube
 
@@ -424,7 +428,7 @@ Video luôn bao phủ toàn màn hình, không bị letterbox hay pillarbox.
 ### 7.7 PWA (Add to Home Screen)
 
 - `manifest.json` → `display: standalone` → mở không có thanh trình duyệt
-- Service Worker → cache file tĩnh → hoạt động khi mất mạng tạm thời
+- Service Worker → luôn ưu tiên lấy từ mạng (để nhận code mới ngay sau deploy), giữ bản cache làm dự phòng khi mất mạng tạm thời
 - Landscape: `orientation: landscape` | Portrait: `orientation: portrait`
 
 ### 7.8 Hosting — Cloudflare Pages

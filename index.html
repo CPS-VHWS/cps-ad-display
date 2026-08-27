@@ -112,7 +112,6 @@
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
     syncServerClock();
     scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
-    startHeartbeat({ mode: 'landscape', region: _region, campaign: _campaign });
     syncAndPlay();
     startGlobalWatchdog();
   }
@@ -317,6 +316,10 @@
     if (player && isReady) { _muted ? player.mute() : player.unMute(); }
     updateMuteIcon();
   });
+
+  // Heartbeat chạy độc lập với YouTube API: máy bị chặn/lỗi YouTube vẫn phải
+  // báo cáo được — đó đúng là lúc cần nhìn thấy nó trong Admin Dashboard.
+  startHeartbeat({ mode: 'landscape', region: _region, campaign: _campaign });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   (function(){ const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; s.async=true; document.head.appendChild(s); })();
