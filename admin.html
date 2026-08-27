@@ -203,7 +203,7 @@
       <button class="btn btn-secondary btn-sm" onclick="addCampaign()">+ Thêm</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">
-      URL thiết bị: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">/?r=hcm&amp;c=edu</code>
+      URL thiết bị: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">/?r=mn&amp;c=edu</code>
       &nbsp;·&nbsp; Video không gán campaign → luôn chạy ở mọi thiết bị
     </div>
   </div>
@@ -219,8 +219,8 @@
     <span style="font-size:12px;color:var(--muted);">🔍 Xem trước:</span>
     <select id="filter-region" onchange="render()" style="width:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;">
       <option value="">Tất cả khu vực</option>
-      <option value="hcm">HCM</option>
-      <option value="hn">HN</option>
+      <option value="mn">MN</option>
+      <option value="mb">MB</option>
     </select>
     <select id="filter-campaign" onchange="render()" style="width:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;">
       <option value="">Tất cả chương trình</option>
@@ -264,7 +264,7 @@
       <div>
         <div style="font-size:13px;font-weight:500;margin-bottom:4px;">🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span></div>
         <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">name, region</code></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: hcm / hn (trống = không gán khu vực).</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: mn / mb (trống = không gán khu vực).</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-secondary btn-sm" onclick="downloadSampleShopCSV()">↓ File mẫu</button>
@@ -305,8 +305,8 @@
     <div class="field">
       <label>Khu vực & Chương trình</label>
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:4px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-hcm" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-hn').checked)?'inline':'none'" style="width:auto;margin:0;"> HCM</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-hn" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-hcm').checked)?'inline':'none'" style="width:auto;margin:0;"> HN</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-mn" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-mb').checked)?'inline':'none'" style="width:auto;margin:0;"> MN</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-region-mb" checked onchange="document.getElementById('new-region-warn').style.display=(!this.checked&&!document.getElementById('new-region-mn').checked)?'inline':'none'" style="width:auto;margin:0;"> MB</label>
         <span class="tag-sep">·</span>
         <select id="new-campaign" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 10px;outline:none;"><option value="">— Luôn chạy</option></select>
         <label id="new-skip-end-wrap" style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text);"><input type="checkbox" id="new-skip-end" style="width:auto;margin:0;"> ✂ Ẩn end screen</label>
@@ -325,7 +325,7 @@
       <div>
         <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Import CSV</div>
         <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">type, id, label, duration, regions, campaign</code></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;">regions: hcm / hn / hcm+hn (trống = tất cả) &nbsp;·&nbsp; campaign: tên chương trình (trống = luôn chạy)</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">regions: mn / mb / mn+mb (trống = tất cả) &nbsp;·&nbsp; campaign: tên chương trình (trống = luôn chạy)</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-secondary btn-sm" onclick="downloadSampleCSV()">↓ File mẫu</button>
@@ -623,8 +623,8 @@ function render() {
         title="Duration (giây) — nhấn Enter để lưu"
         onchange="updateDuration('${activeTab}',${i},this.value)"
         onkeydown="if(event.key==='Enter')this.blur()">`;
-    const hcmChk    = !v.regions || v.regions.includes('hcm') ? 'checked' : '';
-    const hnChk     = !v.regions || v.regions.includes('hn')  ? 'checked' : '';
+    const mnChk     = !v.regions || v.regions.includes('mn') ? 'checked' : '';
+    const mbChk     = !v.regions || v.regions.includes('mb')  ? 'checked' : '';
     const noRegWarn = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
     const campOpts  = getCampaignList().map(c=>`<option value="${escHtml(c)}"${v.campaign===c?' selected':''}>${escHtml(c)}</option>`).join('');
     return `<div class="video-card${dragSrc && dragSrc.tab===activeTab && dragSrc.i===i ? ' dragging' : ''}"
@@ -648,8 +648,8 @@ function render() {
           ${durEl}
         </div>
         <div class="video-tags">
-          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'hcm',this.checked)" ${hcmChk}> HCM</label>
-          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'hn',this.checked)" ${hnChk}> HN</label>
+          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'mn',this.checked)" ${mnChk}> MN</label>
+          <label class="region-chk"><input type="checkbox" onchange="updateRegion('${activeTab}',${i},'mb',this.checked)" ${mbChk}> MB</label>
           ${noRegWarn}<span class="tag-sep">·</span>
           <select class="campaign-sel" onchange="updateCampaign('${activeTab}',${i},this.value)">
             <option value="">— Luôn chạy</option>
@@ -733,9 +733,9 @@ function addItem() {
 
   const entry = { id, type, label: lbl || `Mục ${playlists[activeTab].length + 1}` };
   if (dur) entry.duration = parseInt(dur);
-  const rHcm = document.getElementById('new-region-hcm').checked;
-  const rHn  = document.getElementById('new-region-hn').checked;
-  if (!rHcm || !rHn) entry.regions = [...(rHcm?['hcm']:[]),...(rHn?['hn']:[])];
+  const rMn = document.getElementById('new-region-mn').checked;
+  const rMb = document.getElementById('new-region-mb').checked;
+  if (!rMn || !rMb) entry.regions = [...(rMn?['mn']:[]),...(rMb?['mb']:[])];
   const camp = document.getElementById('new-campaign').value;
   if (camp) entry.campaign = camp;
   if (type === 'youtube' && document.getElementById('new-skip-end').checked) entry.skipEnd = true;
@@ -745,8 +745,8 @@ function addItem() {
   document.getElementById('new-label').value    = '';
   document.getElementById('new-duration').value = '';
   document.getElementById('new-thumb').style.display        = 'none';
-  document.getElementById('new-region-hcm').checked         = true;
-  document.getElementById('new-region-hn').checked          = true;
+  document.getElementById('new-region-mn').checked          = true;
+  document.getElementById('new-region-mb').checked          = true;
   document.getElementById('new-region-warn').style.display  = 'none';
   document.getElementById('new-campaign').value              = '';
   document.getElementById('new-skip-end').checked            = false;
@@ -764,7 +764,7 @@ function moveItem(tab, i, dir) {
 }
 function updateRegion(tab, i, region, checked) {
   const v = playlists[tab][i];
-  let regions = v.regions ? [...v.regions] : ['hcm', 'hn'];
+  let regions = v.regions ? [...v.regions] : ['mn', 'mb'];
   if (checked && !regions.includes(region)) regions.push(region);
   if (!checked) regions = regions.filter(r => r !== region);
   regions.sort();
@@ -973,11 +973,11 @@ function importCSV() {
           if (playlists[activeTab].some(v => v.id === id)) continue;
           const entry = { id, type, label: lbl };
           if (dur) entry.duration = dur;
-          // regions: cột "regions" — giá trị: hcm / hn / hcm+hn (hoặc để trống = tất cả)
+          // regions: cột "regions" — giá trị: mn / mb / mn+mb (hoặc để trống = tất cả)
           const regRaw = col('regions') >= 0 ? (row[col('regions')] || '') : '';
           if (regRaw) {
             const parsed = regRaw.toLowerCase().split('+').map(s=>s.trim()).filter(Boolean);
-            const isAll  = parsed.includes('hcm') && parsed.includes('hn');
+            const isAll  = parsed.includes('mn') && parsed.includes('mb');
             if (!isAll) entry.regions = parsed;
           }
           // campaign — nhớ đăng ký vào campaignList, nếu không video sẽ mang tag
@@ -999,7 +999,7 @@ function importCSV() {
 }
 
 function downloadSampleCSV() {
-  const csv = `type,id,label,duration,regions,campaign\nyoutube,dQw4w9WgXcQ,Video thuong hieu,213,,\nyoutube,xxxxxxxxxxx,Video chuong trinh edu,180,hcm,edu\ngdrive,1A2B3C4D5E6F7G8H9I0J,Video Drive HN,90,hn,\nimage,1A2B3C4D5E6F7G8H9I0J,Banner ca nuoc,5,hcm+hn,\n`;
+  const csv = `type,id,label,duration,regions,campaign\nyoutube,dQw4w9WgXcQ,Video thuong hieu,213,,\nyoutube,xxxxxxxxxxx,Video chuong trinh edu,180,mn,edu\ngdrive,1A2B3C4D5E6F7G8H9I0J,Video Drive MB,90,mb,\nimage,1A2B3C4D5E6F7G8H9I0J,Banner ca nuoc,5,mn+mb,\n`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'playlist-sample.csv'; a.click();
@@ -1070,7 +1070,7 @@ function importShopCSV() {
 }
 
 function downloadSampleShopCSV() {
-  const csv = `name,region\nCellphoneS Nguyen Trai Q5,hcm\nCellphoneS Cau Giay,hn\n`;
+  const csv = `name,region\nCellphoneS Nguyen Trai Q5,mn\nCellphoneS Cau Giay,mb\n`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'shops-sample.csv'; a.click();
@@ -1105,7 +1105,7 @@ function buildConfigJs() {
     if (v.duration) parts.push(`duration: ${v.duration}`);
     parts.push(`label: '${esc(v.label)}'`);
     if (v.regions !== undefined) {
-      const isAll = v.regions.length===2 && v.regions.includes('hcm') && v.regions.includes('hn');
+      const isAll = v.regions.length===2 && v.regions.includes('mn') && v.regions.includes('mb');
       if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${esc(r)}'`).join(', ')}]`);
     }
     if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
