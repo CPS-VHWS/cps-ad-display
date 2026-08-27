@@ -243,6 +243,15 @@
     </div>
   </div>
 
+  <!-- Devices online -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📡 Máy đang online <span id="device-count" class="tab-badge">—</span></div>
+      <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
+    </div>
+    <div id="device-list" style="font-size:12px;color:var(--muted);">Chưa tải.</div>
+  </div>
+
   <!-- Playlist -->
   <div id="playlist-container"></div>
 
@@ -357,6 +366,7 @@ let activeTab    = 'landscape';
 let dirty        = false;
 let dragSrc      = null;
 let campaignList = [];
+let _deviceRefreshTimer = null;
 
 // ═══════════════════════════════════════════════════════════════
 //  PIN
@@ -1059,6 +1069,8 @@ async function loadFromGitHub() {
     markDirty(false); render();
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
     loadChangelog();
+    loadDevices();
+    if (!_deviceRefreshTimer) _deviceRefreshTimer = setInterval(loadDevices, 30000);
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
 }
 
@@ -1163,6 +1175,35 @@ async function clearChangelog() {
     toast('Đã xoá lịch sử', 'success');
     loadChangelog();
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DEVICES ONLINE (heartbeat)
+// ═══════════════════════════════════════════════════════════════
+function timeAgo(ts) {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s trước`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} phút trước`;
+  return `${Math.floor(m / 60)}h ${m % 60}p trước`;
+}
+async function loadDevices() {
+  const countEl = document.getElementById('device-count');
+  const listEl  = document.getElementById('device-list');
+  try {
+    const data = await apiFetch('heartbeat');
+    countEl.textContent = data.count;
+    if (!data.count) { listEl.innerHTML = 'Chưa có máy nào báo cáo (chờ máy reload lần tới, tối đa ~1 giờ sau khi deploy code mới).'; return; }
+    listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Lần cuối</th></tr>
+      ${data.devices.map(d => `<tr style="border-top:1px solid var(--border);">
+        <td style="padding:4px 6px;">${d.mode === 'portrait' ? '▮ Dọc' : '▬ Ngang'}</td>
+        <td style="padding:4px 6px;">${escHtml(d.region || 'tất cả')}</td>
+        <td style="padding:4px 6px;">${escHtml(d.campaign || 'luôn chạy')}</td>
+        <td style="padding:4px 6px;color:var(--muted);">${timeAgo(d.lastSeen)}</td>
+      </tr>`).join('')}
+    </table>`;
+  } catch(e) { countEl.textContent = '—'; listEl.innerHTML = `<span style="color:var(--danger);">Lỗi: ${escHtml(e.message)}</span>`; }
 }
 
 async function loadChangelog() {
