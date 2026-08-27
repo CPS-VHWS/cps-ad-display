@@ -1,5 +1,5 @@
 # Code Review Log — cps-ad-display
-_Last reviewed: 2026-05-02_
+_Last reviewed: 2026-08-27_
 
 ---
 
@@ -46,6 +46,11 @@ _Last reviewed: 2026-05-02_
 | 37 | `_headers` | `Referrer-Policy: same-origin` không gửi `Referer` cho YouTube (cross-origin) → YouTube không xác định được embed domain → Error 153 trên Safari | Đổi sang `strict-origin-when-cross-origin`: gửi origin (không có path/query) cho cross-origin — YouTube validate được, vẫn an toàn |
 | 38 | `index.html` / `vertical/index.html` | Video không có `duration` trong config → system dùng 60s mặc định, nhưng `getAbsoluteSyncState()` tính `offsetSec` có thể vượt quá độ dài thực của video → YouTube seek past end → state 0 ngay → `syncAndPlay` loop | `safeOffset = v.duration ? state.offsetSec : 0` — video không có duration thì luôn play từ đầu, không seek vào giữa |
 | 39 | `admin.html` | Không có cách sửa tên (`label`) và thời lượng (`duration`) trực tiếp trên card — phải xóa và thêm lại | Thêm inline edit: `label` và `duration` là `<input>` styled, click vào gõ được, Enter/blur để lưu |
+| 40 | `admin.html` | **ROOT CAUSE của mojibake trong config.js**: `loadFromGitHub()` decode base64 bằng `atob()` trần, thiếu bước UTF-8 decode (`decodeURIComponent(escape(...))`) mà `loadChangelog()` cùng file đã làm đúng — mỗi vòng "Tải từ GitHub → Lưu" làm hỏng thêm 1 lớp encode cho label tiếng Việt. Nhiều video trong config.js hiện tại đã bị hỏng label qua nhiều vòng | Bỏ hẳn atob/btoa thủ công ở client — chuyển toàn bộ đọc/ghi GitHub sang Cloudflare Pages Function (`functions/api/config.js`, `functions/api/changelog.js`), decode bằng `TextDecoder('utf-8')`/`TextEncoder` ở server. Nhân tiện tách luôn GitHub PAT ra khỏi trình duyệt — xem "Kiến trúc: Admin API proxy" bên dưới |
+| 41 | `admin.html` | `v.id` in thẳng vào `innerHTML` không qua `escHtml()` (khác `label`/campaign đã fix ở #3, #16) — loại `image` nhận URL tự do nên `id` chứa `"><script>` là XSS được | Bọc `escHtml()` cho `v.id` trong `render()` |
+| 42 | `index.html` | `skipEnd` (ẩn end-screen YouTube) chỉ tồn tại trong `vertical/index.html` — admin vẫn hiện checkbox "✂ end screen" cho cả 2 tab nên bật cho video ngang không có tác dụng gì | Port watchdog `ytSkipWatchdog` từ vertical sang landscape — parity 2 file |
+| 43 | `sw.js` | `SHELL_ASSETS` chỉ precache shell của màn ngang — màn dọc (`vertical/index.html`, `vertical/manifest.json`) không cache nên không mở được khi mất mạng, dù docs nói có offline fallback | Thêm shell files của vertical + icons vào `SHELL_ASSETS`, bump cache `v3` → `v4` |
+| 44 | `admin.html` | Field "Giờ tự động reload" (`dailyReloadHour`/`dailyReloadMinute`) ghi vào config.js nhưng không display page nào đọc — xem D6 cũ, giờ resolve luôn thay vì tiếp tục defer | Xoá field khỏi UI + `buildConfigJs()`; hành vi thực tế (reload mỗi đầu giờ, không cấu hình được) đã khớp `setup.md` §7.3 |
 
 ---
 
@@ -70,9 +75,7 @@ _Last reviewed: 2026-05-02_
 |---|------|-------|-------|
 | D1 | `admin.html` | `parsePlaylist()` uses `new Function()` to eval config.js | Low risk — data comes from GitHub repo, admin is PIN-protected. Replace with JSON-based config in future |
 | D2 | `admin.html` | Tab (Landscape/Portrait) not persisted on refresh | Minor UX. Fix: `sessionStorage.setItem('tab', activeTab)` on switch |
-| D4 | `admin.html` | Video IDs in `buildConfigJs()` not sanitized for single quotes | Rare edge case. Fix: `v.id.replace(/'/g, "\\'")` |
 | D5 | `vertical/index.html` | `setupIdleFullscreen()` uses local `idleTimer` — inconsistent with landscape's `_idleTimer` | Cosmetic, works correctly as-is |
-| D6 | `index.html` / `vertical/index.html` | `dailyReloadHour` in APP_CONFIG is saved by admin but not read by display pages | By design for now. Could wire up if needed |
 | D8 | `index.html` / `vertical/index.html` | No YouTube playback quality cap — 4K monitors could pull 4K streams unnecessarily | `setPlaybackQuality()` deprecated (2021), YouTube ignores it. Kiosk screens are 1080p so YouTube auto-serves 1080p |
 | D9 | `index.html` / `vertical/index.html` | Campaign filter passes items with no `campaign` field when `?c=` is set (untagged items show in all campaigns) | Ambiguous by design — untagged = always-on. Document clearly if behavior needs to change |
 | D10 | `index.html` / `vertical/index.html` | `skipEnd` on portrait not perfectly compatible with absolute sync (seekTo re-anchors within current slot instead of advancing) | Acceptable — skipEnd avoids YouTube end screen, absolute sync corrects position within seconds |
@@ -98,9 +101,9 @@ _Last reviewed: 2026-05-02_
 - **Config flow:** Admin → GitHub `config.js` → Cloudflare CDN → display pages via `<script src="config.js">` (network-first, cached by SW for offline fallback). Display pages also poll `config.js` every `syncIntervalMinutes` and auto-reload at next video transition when a change is detected.
 - **Offline resilience:** config.js cached by SW on first successful fetch. Hourly reload with no network → serves cached config → old playlist continues playing. Staff can power-cycle safely.
 - **Absolute sync:** Both display pages use `getAbsoluteSyncState()` = `serverNow() % TOTAL_DUR_MS` to derive current video index and offset from wall clock. All machines with same playlist play the same scene simultaneously. Requires NTP-synced device clocks. Server clock offset corrected at load via HTTP `Date` header (NTP half-RTT method). Typical accuracy: ±200–500ms.
-- **Changelog encoding:** Write uses `btoa(unescape(encodeURIComponent(...)))`. Read uses `decodeURIComponent(escape(atob(...)))`. Both required for correct UTF-8 round-trip.
+- **Admin API proxy (since #40):** `admin.html` no longer holds a GitHub PAT or calls `api.github.com` directly. It calls same-origin `/api/config` and `/api/changelog` (Cloudflare Pages Functions in `functions/`), authenticated with a per-app `ADMIN_API_KEY` sent as `Authorization: Bearer`. The Function verifies the key (constant-time compare) against a Cloudflare secret, then calls GitHub using a separate `GITHUB_TOKEN` secret that never reaches the browser. Both secrets live only in Cloudflare Pages → Settings → Environment variables (Encrypted). Base64/UTF-8 conversion happens server-side via `TextDecoder`/`TextEncoder` — no more `atob`/`btoa`/`escape` juggling in admin.html.
 - **Region/Campaign filter:** `regions: undefined` = all regions; `regions: []` = nowhere; `campaign: undefined` = always-on. Display filter applied at page load from URL params `?r=` and `?c=`. Empty result falls back to full playlist.
-- **`skipEnd` flag:** Portrait only. Polls every 500ms via `ytSkipWatchdog`, fires `syncAndPlay()` at `min(20s, max(2s, dur*15%))` before end to skip YouTube end screens.
+- **`skipEnd` flag:** Both landscape and portrait (parity since #42). Polls every 500ms via `ytSkipWatchdog`, fires `syncAndPlay()` at `min(20s, max(2s, dur*15%))` before end to skip YouTube end screens.
 - **Safe area (iOS):** `vertical/index.html` extends `#player-wrap` with `bottom: -60px` hardcoded (env() returns 0 in Safari standalone/PWA mode).
 - **SW scope:** `vertical/` registers `../sw.js` with `scope: '../'`. Requires `Service-Worker-Allowed: /` header → set in `_headers` for Cloudflare Pages.
 - **onPlayerReady guard:** YouTube IFrame API documented to sometimes fire `onReady` twice on Android WebView. Guard with `if (isReady) return` prevents double timer accumulation.
@@ -120,6 +123,9 @@ _Last reviewed: 2026-05-02_
 | `config-watcher.js` | Shared script — `startConfigWatcher(configUrl)` polled by both display pages |
 | `sw.js` | Service worker — caches shell + config.js fallback, bypasses YouTube |
 | `_headers` | Cloudflare Pages — sets `Service-Worker-Allowed: /` + security headers |
+| `functions/_shared.js` | GitHub API helper (auth check, UTF-8 safe base64) — used by both Functions below |
+| `functions/api/config.js` | Pages Function — proxies GET/PUT `config.js` for admin.html, route `/api/config` |
+| `functions/api/changelog.js` | Pages Function — proxies GET/PUT `changelog.json` for admin.html, route `/api/changelog` |
 | `manifest.json` | PWA manifest (landscape) |
 | `vertical/manifest.json` | PWA manifest (portrait) |
 | `REVIEW.md` | This file — developer notes, bug log, architecture decisions |

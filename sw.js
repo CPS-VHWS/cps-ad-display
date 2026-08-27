@@ -4,13 +4,18 @@
 //  Không cache YouTube stream (luôn lấy trực tiếp từ mạng).
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ad-display-v3';
+const CACHE_NAME = 'ad-display-v4';
 
-// Chỉ cache các file shell của ứng dụng
+// Chỉ cache các file shell của ứng dụng — cả màn ngang lẫn màn dọc,
+// vì cùng 1 service worker (scope gốc '/') phục vụ cho cả 2.
 const SHELL_ASSETS = [
   './index.html',
   './manifest.json',
   './config-watcher.js',
+  './vertical/index.html',
+  './vertical/manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   // config.js không pre-cache — luôn lấy mới nhất từ network, cache lại để dùng offline
 ];
 
