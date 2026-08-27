@@ -1,22 +1,24 @@
 // ═══════════════════════════════════════════════════════════════
 //  Service Worker — Ad Display PWA
-//  Mục đích: cho phép "Add to Home Screen", cache shell tĩnh.
+//  Mục đích: cho phép "Add to Home Screen", giữ bản dự phòng offline.
 //  Không cache YouTube stream (luôn lấy trực tiếp từ mạng).
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ad-display-v5';
+const CACHE_NAME = 'ad-display-v6';
 
-// Chỉ cache các file shell của ứng dụng — cả màn ngang lẫn màn dọc,
-// vì cùng 1 service worker (scope gốc '/') phục vụ cho cả 2.
+// Cache theo ĐÚNG URL mà máy hiển thị truy cập: './' và './vertical/'.
+// KHÔNG dùng './index.html' — Cloudflare Pages redirect 308 về './', nên
+// entry đó vừa không bao giờ khớp request, vừa là response `redirected`
+// mà trình duyệt từ chối phục vụ cho điều hướng trang.
 const SHELL_ASSETS = [
-  './index.html',
+  './',
   './manifest.json',
   './config-watcher.js',
-  './vertical/index.html',
+  './vertical/',
   './vertical/manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  // config.js không pre-cache — luôn lấy mới nhất từ network, cache lại để dùng offline
+  // config.js không pre-cache — lấy từ mạng, cache lại để dùng khi offline
 ];
 
 // ── Install: pre-cache shell ────────────────────────────────────
@@ -41,34 +43,40 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ── Fetch: Shell → cache-first, YouTube → network-only ─────────
+// ── Fetch ───────────────────────────────────────────────────────
+// Network-first cho mọi thứ, cache chỉ là lưới an toàn khi mất mạng.
+// Cố ý KHÔNG cache-first: shell cache-first khiến máy đã cài chạy mãi code
+// cũ — deploy xong phải reload 2 lần mới nhận bản mới (lần 1 vẫn do SW cũ
+// phục vụ). Network-first thì máy luôn chạy code mới nhất khi có mạng.
 self.addEventListener('fetch', event => {
-  const url = event.request.url;
+  const req = event.request;
+  const url = req.url;
 
-  // YouTube API & stream, và mọi gọi API (/api/*, vd heartbeat): luôn lấy từ mạng, không qua cache
-  if (url.includes('youtube.com') || url.includes('ytimg.com') || url.includes('googlevideo.com') || url.includes('/api/')) {
-    event.respondWith(fetch(event.request));
+  // Chỉ can thiệp GET — POST /api/heartbeat để trình duyệt tự xử lý
+  if (req.method !== 'GET') return;
+
+  // YouTube API & stream, và mọi lời gọi API: luôn thẳng ra mạng
+  if (url.includes('youtube.com') || url.includes('ytimg.com') ||
+      url.includes('googlevideo.com') || url.includes('/api/')) {
+    event.respondWith(fetch(req));
     return;
   }
 
-  // config.js: network-first, cache theo canonical URL (bỏ query param từ poll request)
-  // → khi offline phục vụ config cũ nhất đã lấy được
-  if (url.includes('config.js')) {
-    const canonicalUrl = url.split('?')[0];
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(canonicalUrl, clone)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(canonicalUrl))
-    );
-    return;
-  }
+  // config.js được poll kèm ?_t=... — cache dưới URL gốc để lần offline
+  // sau vẫn tìm thấy, tránh cache rác một key cho mỗi timestamp.
+  const cacheKey = url.includes('config.js') ? url.split('?')[0] : req;
 
-  // Shell assets: cache-first, fallback network
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(req)
+      .then(res => {
+        // Không cache response redirect: trình duyệt từ chối phục vụ chúng
+        // cho điều hướng trang, sẽ thành lỗi trắng màn hình khi offline.
+        if (res && res.ok && !res.redirected) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(cacheKey, clone)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(cacheKey).then(cached => cached || Response.error()))
   );
 });

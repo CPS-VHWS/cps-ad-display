@@ -67,6 +67,20 @@ _Last reviewed: 2026-08-27_
 
 ---
 
+## FIXED — review pass 2026-08-27 (chiều)
+
+Soát lại toàn bộ trước khi triển khai rộng; 3 lỗi dưới đây đều **kiểm chứng trực tiếp trên production**, không phải suy đoán.
+
+| # | File | Issue | Fix |
+|---|------|-------|-----|
+| 45 | `sw.js` | **Offline fallback của trang hiển thị chưa bao giờ hoạt động.** `SHELL_ASSETS` cache `./index.html` và `./vertical/index.html`, nhưng Cloudflare Pages redirect 308 `/index.html` → `/`, còn máy thật luôn điều hướng tới `/` và `/vertical/`. Kiểm chứng trên prod: `caches.match('https://cps-ad-display.pages.dev/')` → **null**, và entry đã cache có `redirected: true` (trình duyệt từ chối phục vụ response redirect cho navigation). Mất mạng lúc reload = trang lỗi trình duyệt, không phải app. **Fix #43 trước đó tưởng đã vá offline cho màn dọc — thực tế không, vì cache sai URL** | Đổi `SHELL_ASSETS` sang `'./'` + `'./vertical/'` (URL thật, trả 200 trực tiếp); thêm guard `!res.redirected` trước khi `cache.put` |
+| 46 | `sw.js` | Shell phục vụ **cache-first** → sau deploy máy phải reload **2 lần** mới chạy code mới: lần 1 vẫn do SW cũ phục vụ bản cũ, SW mới chỉ cài cache ở nền. Kiểm chứng bằng `performance.getEntriesByType('resource')`: lần load đầu nhận `config-watcher.js` **937 bytes** (bản cũ, không có heartbeat) dù bản deploy là 2282 bytes; `typeof startHeartbeat === 'undefined'` | Chuyển toàn bộ sang **network-first, cache-fallback**: có mạng luôn chạy code mới nhất, cache chỉ là lưới an toàn khi offline. Bỏ luôn được ràng buộc "mọi sửa đổi phải nhớ bump CACHE_NAME" |
+| 47 | `sw.js` | Nhánh `config.js` offline: `caches.match(canonicalUrl)` trả `undefined` khi máy chưa từng cache được config.js → `respondWith(undefined)` → network error → `PLAYLIST_LANDSCAPE` undefined → **màn hình đen** | `cached \|\| Response.error()`; đồng thời `req.method !== 'GET'` thì không can thiệp (POST heartbeat để trình duyệt tự xử lý) |
+| 48 | `index.html` / `vertical/index.html` | `startHeartbeat()` gọi trong `onPlayerReady()` → máy bị chặn/lỗi YouTube API sẽ **không bao giờ báo cáo**, tức là vô hình trong Admin đúng lúc cần thấy nó nhất | Chuyển ra top-level, chạy độc lập với YouTube API |
+| 49 | `config-watcher.js`, `functions/api/heartbeat.js`, `admin.html` | **Quota KV free tier bị bỏ sót khi thiết kế F1** (chi tiết ở Architecture Notes) — nhịp cũ 8 phút = 180 lượt ghi/ngày/máy, trần free tier là 1.000 ghi/ngày ⇒ **chỉ ~5 máy**. Panel refresh 30s = 120 lượt `list`/giờ, trần 1.000 list/ngày ⇒ mở tab admin ~8 tiếng là cạn | Nhịp mới: ping lúc load, throttle `localStorage` 12 tiếng ⇒ ~2 ghi/ngày/máy ⇒ **~500 máy** vẫn miễn phí. TTL 30 phút → **26 tiếng**. Panel refresh 30s → **5 phút** và chỉ khi tab visible. Lưu dữ liệu vào **KV metadata** thay vì value ⇒ GET chỉ tốn 1 `list`, bỏ N lượt `get`. Thêm phân trang cursor. Tách nhịp heartbeat khỏi `syncIntervalMinutes` (trước đó set mốc đồng bộ > 30 phút là mọi máy hiện offline vĩnh viễn) |
+
+---
+
 ## NOT BUGS (False Alarms)
 
 | Claim | Verdict |
@@ -122,8 +136,9 @@ _Last reviewed: 2026-08-27_
 - **onPlayerReady guard:** YouTube IFrame API documented to sometimes fire `onReady` twice on Android WebView. Guard with `if (isReady) return` prevents double timer accumulation.
 - **Tab coordination:** `BroadcastChannel('cps-display')` — when a tab becomes visible it broadcasts `active`, background tabs with same URL pause their player. Prevents multiple tabs from playing simultaneously on experience machines.
 - **Single-video loop:** When `isSameVideo && ytState !== -1`, uses `seekTo(offsetSec) + playVideo()` instead of `loadVideoById` — avoids re-triggering YouTube's load pipeline, video stays buffered.
-- **Heartbeat / online tracking (F1):** `getDeviceId()` in `config-watcher.js` generates a random id on first run, persisted in `localStorage` — stable across reloads on the same device, resets if the browser's storage is cleared or in a fresh private-mode session. `startHeartbeat()` piggybacks on the same interval as the config poll (no separate timer). `/api/heartbeat` POST is intentionally unauthenticated (low value target — worst case is noise in the online list, not a security issue); GET (used by admin.html) requires `ADMIN_API_KEY`. KV TTL (30 min) does the "is it still online" bookkeeping — no server-side cron or cleanup job needed.
-- **SW cache-invalidation gotcha:** `index.html`, `vertical/index.html`, `config-watcher.js`, and `manifest.json` are precached shell assets served **cache-first** by `sw.js`. `location.reload()` does **not** bypass this — a device that already installed the SW will keep serving the old cached version of these files indefinitely unless `sw.js` itself changes (which forces a fresh install + re-fetch of `SHELL_ASSETS`). **Any future edit to display-page code must bump `CACHE_NAME` in `sw.js`**, or already-deployed kiosks will silently never receive it, even after their scheduled hourly reload.
+- **Heartbeat / online tracking (F1, sửa lại ở #48–49):** device id random sinh 1 lần, lưu `localStorage`; nếu localStorage bị chặn thì **bỏ hẳn heartbeat** thay vì sinh id tạm — id rác mỗi lần load sẽ thổi phồng số liệu. `startHeartbeat()` gọi ở top-level (không phụ thuộc YouTube API), tự throttle 12 tiếng ⇒ ~2 lượt ghi/ngày/máy. Dữ liệu nằm ở **KV metadata**, TTL 26h lo phần "máy còn hoạt động không" — không cần cron dọn dẹp. POST cố ý không auth; GET cần `ADMIN_API_KEY`.
+- **Hạn mức Cloudflare KV (free tier) là ràng buộc thiết kế chính, không phải băng thông.** 1.000 ghi/ngày · 1.000 list/ngày · 100.000 đọc/ngày cho **toàn tài khoản**. Mọi thay đổi về nhịp heartbeat hay nhịp refresh của panel phải tính lại theo công thức `1440 / nhịp_phút × số_máy`. Ở nhịp hiện tại (~2 lần/ngày/máy) trần là ~500 máy. Muốn theo dõi sát thời gian thực thì bắt buộc nâng Workers Paid ($5/tháng) — đừng cố lách bằng cách giảm TTL, vì TTL luôn phải dài hơn nhịp ghi. **Failure mode lành tính**: hết quota → `KV.put` lỗi → Function trả 500 → client `.catch()` nuốt → màn hình vẫn phát video bình thường, chỉ panel ngừng cập nhật.
+- **SW là network-first (từ #46):** shell lấy từ mạng trước, cache chỉ dùng khi fetch fail. Nhờ vậy máy đã cài nhận code mới ngay lần reload kế tiếp, **không còn phải nhớ bump `CACHE_NAME` mỗi lần sửa code hiển thị**. Vẫn nên bump khi đổi chính `SHELL_ASSETS` để dọn entry cũ. Lưu ý: **không bao giờ cache response có `redirected: true`** — Cloudflare Pages redirect `/index.html` → `/`, và trình duyệt từ chối phục vụ response redirect cho navigation request (đây chính là gốc của #45).
 
 ---
 

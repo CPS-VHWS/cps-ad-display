@@ -246,10 +246,11 @@
   <!-- Devices online -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📡 Máy đang online <span id="device-count" class="tab-badge">—</span></div>
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📡 Máy hoạt động (24h qua) <span id="device-count" class="tab-badge">—</span></div>
       <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
     </div>
     <div id="device-list" style="font-size:12px;color:var(--muted);">Chưa tải.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Mỗi máy báo cáo ~2 lần/ngày (giữ trong hạn mức miễn phí của Cloudflare) — nên đây là "máy có hoạt động trong 24h qua", không phải trạng thái online theo thời gian thực.</div>
   </div>
 
   <!-- Playlist -->
@@ -1070,7 +1071,13 @@ async function loadFromGitHub() {
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
     loadChangelog();
     loadDevices();
-    if (!_deviceRefreshTimer) _deviceRefreshTimer = setInterval(loadDevices, 30000);
+    // 5 phút/lần và chỉ khi tab đang hiện: hạn mức list của KV free tier là
+    // 1.000/ngày — refresh 30s như trước sẽ đốt sạch chỉ sau ~8 tiếng mở tab.
+    if (!_deviceRefreshTimer) {
+      _deviceRefreshTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') loadDevices();
+      }, 5 * 60 * 1000);
+    }
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
 }
 
@@ -1193,7 +1200,7 @@ async function loadDevices() {
   try {
     const data = await apiFetch('heartbeat');
     countEl.textContent = data.count;
-    if (!data.count) { listEl.innerHTML = 'Chưa có máy nào báo cáo (chờ máy reload lần tới, tối đa ~1 giờ sau khi deploy code mới).'; return; }
+    if (!data.count) { listEl.innerHTML = 'Chưa có máy nào báo cáo — chờ máy tự reload lần tới (tối đa ~1 giờ sau khi deploy code mới).'; return; }
     listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
       <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Lần cuối</th></tr>
       ${data.devices.map(d => `<tr style="border-top:1px solid var(--border);">
