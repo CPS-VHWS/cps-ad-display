@@ -125,6 +125,7 @@
   }
   function onPlayerError(e) {
     console.warn('[AdDisplay:Portrait] Error:', e.data);
+    window._lastError = { type: 'yt_error_' + e.data, at: Date.now() };
     _errorCount++;
     if (_errorCount >= 3) {
       console.warn('[AdDisplay:Portrait] Skip after 3 errors on index', currentIndex);

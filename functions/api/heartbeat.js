@@ -27,6 +27,8 @@ export async function onRequestPost({ request, env }) {
       mode: body.mode === 'portrait' ? 'portrait' : 'landscape',
       region: body.region ? String(body.region).slice(0, 32) : null,
       campaign: body.campaign ? String(body.campaign).slice(0, 32) : null,
+      appVersion: body.appVersion ? String(body.appVersion).slice(0, 16) : null,
+      lastError: body.lastError ? String(body.lastError).slice(0, 32) : null,
       lastSeen: Date.now(),
     };
     await env.HEARTBEAT_KV.put(KEY_PREFIX + id, '', { expirationTtl: TTL_SECONDS, metadata: meta });

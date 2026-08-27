@@ -16,7 +16,7 @@ function startConfigWatcher(configUrl) {
         if (fingerprint && t !== fingerprint) _configChanged = true;
         fingerprint = t;
       })
-      .catch(() => {})
+      .catch(() => { window._lastError = { type: 'config_fetch', at: Date.now() }; })
       .finally(() => { fetching = false; });
   }
 
@@ -49,10 +49,23 @@ function startHeartbeat(info) {
 
   if (Date.now() - lastPing < HEARTBEAT_MIN_GAP_MS) return;
 
+  // App Android gắn version vào User-Agent dạng "CPSDisplayApp/1.0.2" — lấy ra nếu có,
+  // để admin biết máy đang chạy bản app nào mà không cần thêm lượt gọi mạng riêng.
+  const uaMatch = navigator.userAgent.match(/CPSDisplayApp\/([\w.]+)/);
+  const appVersion = uaMatch ? uaMatch[1] : null;
+
+  // Lỗi gần nhất (nếu có) trong phiên hiện tại — chỉ báo nếu xảy ra trong 1 giờ gần đây,
+  // tránh báo lỗi cũ đã tự phục hồi từ lâu.
+  const err = window._lastError;
+  const lastError = (err && Date.now() - err.at < 60 * 60 * 1000) ? err.type : null;
+
   fetch('/api/heartbeat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, mode: info.mode, region: info.region || null, campaign: info.campaign || null }),
+    body: JSON.stringify({
+      id, mode: info.mode, region: info.region || null, campaign: info.campaign || null,
+      appVersion, lastError,
+    }),
     keepalive: true,
   })
     .then(res => {

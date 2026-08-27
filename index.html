@@ -121,6 +121,7 @@
   }
   function onPlayerError(e) {
     console.warn('[AdDisplay] Error:', e.data);
+    window._lastError = { type: 'yt_error_' + e.data, at: Date.now() };
     _errorCount++;
     if (_errorCount >= 3) {
       // Cùng video lỗi 3 lần liên tiếp → skip hẳn sang video kế, không retry nữa

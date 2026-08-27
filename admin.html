@@ -1222,11 +1222,13 @@ async function loadDevices() {
     countEl.textContent = data.count;
     if (!data.count) { listEl.innerHTML = 'Chưa có máy nào báo cáo — chờ máy tự reload lần tới (tối đa ~1 giờ sau khi deploy code mới).'; return; }
     listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Lần cuối</th></tr>
+      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Bản app</th><th style="padding:4px 6px;">Lỗi gần nhất</th><th style="padding:4px 6px;">Lần cuối</th></tr>
       ${data.devices.map(d => `<tr style="border-top:1px solid var(--border);">
         <td style="padding:4px 6px;">${d.mode === 'portrait' ? '▮ Dọc' : '▬ Ngang'}</td>
         <td style="padding:4px 6px;">${escHtml(d.region || 'tất cả')}</td>
         <td style="padding:4px 6px;">${escHtml(d.campaign || 'luôn chạy')}</td>
+        <td style="padding:4px 6px;color:var(--muted);">${escHtml(d.appVersion || '—')}</td>
+        <td style="padding:4px 6px;${d.lastError ? 'color:var(--danger);' : 'color:var(--muted);'}">${escHtml(d.lastError || '—')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${timeAgo(d.lastSeen)}</td>
       </tr>`).join('')}
     </table>`;
