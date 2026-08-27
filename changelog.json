@@ -1,5 +1,13 @@
 [
   {
+    "ts": 1787826128101,
+    "changes": [
+      "Landscape ~Renamed \"LÃÂªn ÃÂÃ¡Â»Âi smartphone mÃ¡Â»Âi\" -> \"Lên đời smartphone mới\"",
+      "Landscape ~Renamed \"Mua Laptop tÃ¡ÂºÂ·ng Bali\" -> \"Mua Laptop tặng balo\"",
+      "Landscape ~Renamed \"BÃ¡Â»Â phÃ¡Â»Â¥ kiÃ¡Â»Ân GenZ & QuÃÂ  Limited 2026\" -> \"Bộ phụ kiện GenZ & Quà Limited 2026\""
+    ]
+  },
+  {
     "ts": 1787818729204,
     "changes": [
       "Landscape ~Campaign \"DEMO MDM LAPTOP CAMP 2/9\": quockhanh -> trade",
