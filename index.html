@@ -80,6 +80,7 @@
   let _clockOffset = 0;   // hiệu chỉnh đồng hồ máy so với server (ms)
   let _playerErrored = false; // flag để buộc loadVideoById sau lỗi thay vì seekTo
   let _errorCount = 0;        // đếm lỗi liên tiếp trên cùng 1 video — skip sau 3 lần
+  let ytSkipWatchdog = null;  // interval theo dõi skipEnd (ẩn end screen YouTube)
 
   // Đo lệch đồng hồ giữa máy và Cloudflare server.
   // Dùng NTP half-RTT: offset = serverTime − (t0 + t1) / 2
@@ -155,6 +156,7 @@
     currentIndex = state.index;
     const v = PLAYLIST[currentIndex];
 
+    clearInterval(ytSkipWatchdog);
     document.getElementById('yt-player').style.display  = 'none';
     document.getElementById('gd-player').style.display  = 'none';
     document.getElementById('img-player').style.display = 'none';
@@ -192,6 +194,16 @@
         _playerErrored = false;
         player.loadVideoById({ videoId: v.id, startSeconds: safeOffset });
         _muted ? player.mute() : player.unMute();
+      }
+
+      // skipEnd: thoát trước ~15% cuối để tránh hiện end screen YouTube
+      if (v.skipEnd) {
+        ytSkipWatchdog = setInterval(() => {
+          if (!player || !isReady || player.getPlayerState() !== 1) return;
+          const dur = player.getDuration(), cur = player.getCurrentTime();
+          const skipAt = Math.min(20, Math.max(2, dur * 0.15));
+          if (dur > 0 && (dur - cur) <= skipAt) { clearInterval(ytSkipWatchdog); syncAndPlay(); }
+        }, 500);
       }
     }
   }

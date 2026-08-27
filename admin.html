@@ -10,7 +10,8 @@
   // ╚══════════════════════════════════════════════════════════════╝
   // SHA-256 hash của PIN (đổi PIN: chạy: echo -n "PIN_MỚI" | shasum -a 256)
   const ADMIN_PIN_HASH = '8a7118aab1e7c32953d2a02e46be8b410a49318ff12c368ccee01cfe9bc8d098';
-  const GITHUB_TOKEN = '';       // ← token lưu trong sessionStorage (xoá khi đóng browser/tab)
+  // GitHub PAT không còn nằm ở trình duyệt — admin.html gọi /api/config, /api/changelog
+  // (Cloudflare Pages Function) kèm Admin API Key; Function giữ GITHUB_TOKEN thật ở server.
   // URL màn hình hiển thị (dùng cho idle redirect)
   const DISPLAY_URL  = 'https://cps-ad-display.pages.dev/';
   const IDLE_MINUTES = 2;        // ← phút idle trước khi mở màn hình display
@@ -183,12 +184,9 @@
       <div class="field"><label>Repository</label><input id="gh-repo"  value="cps-ad-display" readonly style="opacity:.45;cursor:not-allowed;"></div>
     </div>
     <div class="field">
-      <label>Personal Access Token —
-        <a href="https://github.com/settings/tokens/new?scopes=repo&description=cps-ad-display" target="_blank"
-           style="color:var(--accent);text-decoration:none;font-size:11px;">Tạo token mới ↗</a>
-      </label>
-      <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Token chỉ lưu trong tab hiện tại — đóng browser sẽ phải dán lại.</div>
+      <label>Admin API Key</label>
+      <input id="gh-token" type="password" placeholder="Dán Admin API Key (không phải GitHub token)">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Key riêng của app — không phải GitHub token. GitHub token thật nằm trên Cloudflare, trình duyệt không bao giờ thấy. Key chỉ lưu trong tab hiện tại — đóng browser sẽ phải dán lại.</div>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="loadFromGitHub()">↓ Tải playlist từ GitHub</button>
   </div>
@@ -320,8 +318,8 @@
   <div class="panel" style="margin-bottom:20px;">
     <div class="config-row">
       <div class="field"><label>Mốc đồng bộ (phút)</label><input id="cfg-sync" type="number" value="5" min="1" max="120"></div>
-      <div class="field"><label>Giờ tự động reload</label><input id="cfg-reload-hour" type="number" value="8" min="0" max="23"></div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Màn hình luôn tự reload vào đầu mỗi giờ (8:00, 9:00...) để nhận playlist mới — không cấu hình được giờ riêng.</div>
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
       <input id="cfg-status" type="checkbox" checked>
       <label style="margin:0;cursor:pointer;" for="cfg-status">Hiện thanh trạng thái</label>
@@ -411,29 +409,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initAdmin() {
-  // Migration: token cũ lưu ở localStorage → chuyển sang sessionStorage và xoá khỏi localStorage
-  const legacy = localStorage.getItem('cps_admin');
-  if (legacy) {
-    try {
-      const d = JSON.parse(legacy);
-      if (d.token) {
-        sessionStorage.setItem('cps_admin_token', d.token);
-        delete d.token;
-        localStorage.setItem('cps_admin', JSON.stringify(d));
-      }
-      if (d.owner) document.getElementById('gh-owner').value = d.owner;
-      if (d.repo)  document.getElementById('gh-repo').value  = d.repo;
-    } catch(e){}
-  }
-  // Token: chỉ đọc từ sessionStorage (sạch khi đóng tab)
-  const sessToken = sessionStorage.getItem('cps_admin_token');
-  if (sessToken) document.getElementById('gh-token').value = sessToken;
-  if (GITHUB_TOKEN && !document.getElementById('gh-token').value)
-    document.getElementById('gh-token').value = GITHUB_TOKEN;
+  // Admin API Key: chỉ đọc từ sessionStorage (sạch khi đóng tab)
+  const sessKey = sessionStorage.getItem('cps_admin_apikey');
+  if (sessKey) document.getElementById('gh-token').value = sessKey;
 
-  ['gh-token','gh-owner','gh-repo'].forEach(id =>
-    document.getElementById(id)?.addEventListener('change', saveLocalSettings)
-  );
+  document.getElementById('gh-token')?.addEventListener('change', saveLocalSettings);
 
   render();
   if (document.getElementById('gh-token').value) loadFromGitHub();
@@ -441,13 +421,8 @@ function initAdmin() {
 }
 
 function saveLocalSettings() {
-  // Token → sessionStorage (xoá khi đóng tab/browser, giảm rủi ro XSS đánh cắp)
-  sessionStorage.setItem('cps_admin_token', document.getElementById('gh-token').value.trim());
-  // Owner/repo → localStorage (không nhạy cảm, tiện hơn)
-  localStorage.setItem('cps_admin', JSON.stringify({
-    owner: document.getElementById('gh-owner').value.trim(),
-    repo : document.getElementById('gh-repo').value.trim(),
-  }));
+  // Admin API Key → sessionStorage (xoá khi đóng tab/browser, giảm rủi ro XSS đánh cắp)
+  sessionStorage.setItem('cps_admin_apikey', document.getElementById('gh-token').value.trim());
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -636,7 +611,7 @@ function render() {
           onkeydown="if(event.key==='Enter')this.blur()">
         <div class="video-meta">
           <span class="badge ${badgeCls}">${badgeTxt}</span>
-          <span class="video-id">${v.id.length>16?v.id.slice(0,16)+'…':v.id}</span>
+          <span class="video-id">${escHtml(v.id.length>16?v.id.slice(0,16)+'…':v.id)}</span>
           ${durEl}
         </div>
         <div class="video-tags">
@@ -987,7 +962,6 @@ function downloadSampleCSV() {
 // ═══════════════════════════════════════════════════════════════
 function buildConfigJs() {
   const syncMin    = parseInt(document.getElementById('cfg-sync').value) || 5;
-  const reloadHour = parseInt(document.getElementById('cfg-reload-hour').value) || 8;
   const showStatus = document.getElementById('cfg-status').checked;
   const campList   = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
@@ -1026,8 +1000,6 @@ ${ps}
 
 const APP_CONFIG = {
   syncIntervalMinutes: ${syncMin},
-  dailyReloadHour: ${reloadHour},
-  dailyReloadMinute: 0,
   showStatusBar: ${showStatus},
   errorSkipDelay: 2000,
   campaigns: [${campList.map(c=>`'${esc(c)}'`).join(', ')}],
@@ -1054,21 +1026,15 @@ function parseAppConfig(src) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  GITHUB API
+//  API (proxy qua Cloudflare Pages Functions — /api/config, /api/changelog)
+//  Function giữ GITHUB_TOKEN thật ở server; trình duyệt chỉ gửi Admin API Key.
 // ═══════════════════════════════════════════════════════════════
-function ghParams() {
-  return {
-    token: document.getElementById('gh-token').value.trim(),
-    owner: document.getElementById('gh-owner').value.trim(),
-    repo : document.getElementById('gh-repo').value.trim(),
-  };
-}
-async function ghFetch(path, opts={}) {
-  const { token, owner, repo } = ghParams();
-  if (!token) throw new Error('Chưa nhập GitHub Token');
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+async function apiFetch(resource, opts={}) {
+  const key = document.getElementById('gh-token').value.trim();
+  if (!key) throw new Error('Chưa nhập Admin API Key');
+  const res = await fetch(`/api/${resource}`, {
     ...opts,
-    headers: { Authorization:`Bearer ${token}`, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json', ...(opts.headers||{}) },
+    headers: { Authorization:`Bearer ${key}`, 'Content-Type':'application/json', ...(opts.headers||{}) },
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
@@ -1079,14 +1045,13 @@ async function loadFromGitHub() {
   saveLocalSettings();
   toast('Đang tải...','info');
   try {
-    const data    = await ghFetch('config.js');
-    const content = atob(data.content.replace(/\n/g,''));
+    const data    = await apiFetch('config');
+    const content = data.content;
     playlists.landscape = parsePlaylist(content,'PLAYLIST_LANDSCAPE');
     playlists.portrait  = parsePlaylist(content,'PLAYLIST_PORTRAIT');
     const cfg = parseAppConfig(content);
     if (cfg) {
       document.getElementById('cfg-sync').value        = cfg.syncIntervalMinutes ?? 5;
-      document.getElementById('cfg-reload-hour').value = cfg.dailyReloadHour ?? 8;
       document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
       if (cfg.campaigns?.length) { campaignList = cfg.campaigns; renderCampaignChips(); }
     }
@@ -1115,14 +1080,10 @@ async function saveToGitHub() {
   btn.disabled=true; btn.textContent='Đang lưu...';
   toast('Đang cập nhật GitHub...','info');
   try {
-    const cur = await ghFetch('config.js');
-    await ghFetch('config.js', {
+    const cur = await apiFetch('config');
+    await apiFetch('config', {
       method:'PUT',
-      body: JSON.stringify({
-        message:'chore: update playlists via admin dashboard',
-        content: btoa(unescape(encodeURIComponent(buildConfigJs()))),
-        sha: cur.sha,
-      }),
+      body: JSON.stringify({ content: buildConfigJs(), sha: cur.sha }),
     });
     // Ghi changelog
     const changes = buildChangelogDiff();
@@ -1180,28 +1141,25 @@ function buildChangelogDiff() {
 async function appendChangelog(changes) {
   let existing = [], sha = null;
   try {
-    const data = await ghFetch('changelog.json');
+    const data = await apiFetch('changelog');
     sha = data.sha;
-    existing = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+    existing = JSON.parse(data.content);
   } catch(e) { /* file chưa tồn tại */ }
   existing.unshift({ ts: Date.now(), changes });
   if (existing.length > 200) existing = existing.slice(0, 200);
-  const body = {
-    message: 'chore: update changelog',
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2)))),
-  };
+  const body = { content: JSON.stringify(existing, null, 2) };
   if (sha) body.sha = sha;
-  await ghFetch('changelog.json', { method:'PUT', body: JSON.stringify(body) });
+  await apiFetch('changelog', { method:'PUT', body: JSON.stringify(body) });
 }
 
 async function clearChangelog() {
   if (!confirm('Xoá toàn bộ lịch sử thay đổi?')) return;
   try {
     let sha = null;
-    try { const d = await ghFetch('changelog.json'); sha = d.sha; } catch {}
-    const body = { message: 'chore: clear changelog', content: btoa('[]') };
+    try { const d = await apiFetch('changelog'); sha = d.sha; } catch {}
+    const body = { message: 'chore: clear changelog', content: '[]' };
     if (sha) body.sha = sha;
-    await ghFetch('changelog.json', { method:'PUT', body: JSON.stringify(body) });
+    await apiFetch('changelog', { method:'PUT', body: JSON.stringify(body) });
     toast('Đã xoá lịch sử', 'success');
     loadChangelog();
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
@@ -1212,13 +1170,8 @@ async function loadChangelog() {
   if (!el) return;
   el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:6px 0;">Đang tải...</div>';
   try {
-    const { token, owner, repo } = ghParams();
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/changelog.json`, {
-      headers: token ? { Authorization:`Bearer ${token}` } : {},
-    });
-    if (!res.ok) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:6px 0;">Chưa có lịch sử. Lưu lần đầu để bắt đầu ghi.</div>'; return; }
-    const data = await res.json();
-    const entries = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+    const data = await apiFetch('changelog');
+    const entries = JSON.parse(data.content);
     renderChangelog(entries);
   } catch(e) { el.innerHTML = `<div style="color:var(--danger);font-size:13px;">${e.message}</div>`; }
 }
