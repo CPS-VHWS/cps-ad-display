@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'trade' },
+  { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
   { id: 'aCJFpFS6OPE', duration: 31, label: 'Lên đời smartphone mới', campaign: 'trade' },
   { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tặng balo', campaign: 'trade' },
   { id: 'uu_52j5NxG8', duration: 30, label: 'Bộ phụ kiện GenZ & Quà Limited 2026', campaign: 'trade' },
