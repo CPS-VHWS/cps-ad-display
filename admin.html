@@ -185,7 +185,10 @@
     </div>
     <div class="field">
       <label>Admin API Key</label>
-      <input id="gh-token" type="password" placeholder="Dán Admin API Key (không phải GitHub token)">
+      <!-- autocomplete="new-password": chặn Chrome tự điền mật khẩu PIN đã lưu vào ô này.
+           Không chặn thì app gửi PIN lên server thay vì API Key → lỗi 401 Unauthorized. -->
+      <input id="gh-token" type="password" autocomplete="new-password" data-lpignore="true"
+             placeholder="Dán Admin API Key (không phải GitHub token)">
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">Key riêng của app — không phải GitHub token. GitHub token thật nằm trên Cloudflare, trình duyệt không bao giờ thấy. Key chỉ lưu trong tab hiện tại — đóng browser sẽ phải dán lại.</div>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="loadFromGitHub()">↓ Tải playlist từ GitHub</button>
@@ -241,38 +244,6 @@
       <code id="url-portrait" style="flex:1;background:var(--surface2);padding:4px 8px;border-radius:5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);"></code>
       <button onclick="copyUrl('url-portrait')" class="btn btn-secondary btn-sm">Copy</button>
     </div>
-  </div>
-
-  <!-- Devices online -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">📡 Máy hoạt động (24h qua) <span id="device-count" class="tab-badge">—</span></div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="device-shop-filter" onchange="renderDeviceList()" style="font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px;">
-          <option value="">Tất cả shop</option>
-        </select>
-        <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
-      </div>
-    </div>
-    <div id="device-list" style="font-size:12px;color:var(--muted);">Chưa tải.</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Mỗi máy báo cáo ~2 lần/ngày (giữ trong hạn mức miễn phí của Cloudflare) — nên đây là "máy có hoạt động trong 24h qua", không phải trạng thái online theo thời gian thực.</div>
-  </div>
-
-  <!-- Danh sách Shop -->
-  <div class="panel" style="margin-bottom:20px;">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-      <div>
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px;">🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span></div>
-        <div style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">name, region</code></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: mn / mb (trống = không gán khu vực).</div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary btn-sm" onclick="downloadSampleShopCSV()">↓ File mẫu</button>
-        <button class="btn btn-secondary btn-sm" onclick="importShopCSV()">↑ Upload CSV</button>
-        <button class="btn btn-primary btn-sm" onclick="saveShops()">↑ Lưu lên GitHub</button>
-      </div>
-    </div>
-    <div id="shop-list" style="font-size:12px;color:var(--muted);margin-top:10px;">Chưa tải.</div>
   </div>
 
   <!-- Playlist -->
@@ -364,19 +335,51 @@
     <button class="btn btn-primary" id="btn-save" onclick="saveToGitHub()" disabled>↑ Lưu lên GitHub</button>
   </div>
 
+  <!-- Danh sách Shop -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px;cursor:pointer;user-select:none;" onclick="toggleSection('shop')"><span id="shop-caret">▸</span> 🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span></div>
+        <div class="sec-shop" style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">name, region</code></div>
+        <div class="sec-shop" style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: mn / mb (trống = không gán khu vực).</div>
+      </div>
+      <div class="btn-row sec-shop">
+        <button class="btn btn-secondary btn-sm" onclick="downloadSampleShopCSV()">↓ File mẫu</button>
+        <button class="btn btn-secondary btn-sm" onclick="importShopCSV()">↑ Upload CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="saveShops()">↑ Lưu lên GitHub</button>
+      </div>
+    </div>
+    <div id="shop-list" class="sec-shop" style="font-size:12px;color:var(--muted);margin-top:10px;">Chưa tải.</div>
+  </div>
+
   <!-- Changelog -->
   <div style="margin-top:28px;margin-bottom:40px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <h2 style="margin:0;">Lịch sử thay đổi</h2>
-      <div style="display:flex;gap:6px;">
+      <h2 style="margin:0;cursor:pointer;user-select:none;" onclick="toggleSection('log')"><span id="log-caret">▸</span> Lịch sử thay đổi</h2>
+      <div class="sec-log" style="display:flex;gap:6px;">
         <button class="btn btn-secondary btn-sm" onclick="loadChangelog()">↻ Làm mới</button>
         <button class="btn btn-danger btn-sm" onclick="clearChangelog()">🗑 Xoá</button>
       </div>
     </div>
-    <div class="panel" style="max-height:520px;overflow-y:auto;padding:14px 18px;">
+    <div class="panel sec-log" style="max-height:520px;overflow-y:auto;padding:14px 18px;">
       <div id="changelog-list" style="color:var(--muted);font-size:13px;">Tải playlist từ GitHub để xem lịch sử.</div>
     </div>
   </div>
+  <!-- Devices online -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none;" onclick="toggleSection('dev')"><span id="dev-caret">▸</span> 📡 Máy hoạt động (24h qua) <span id="device-count" class="tab-badge">—</span></div>
+      <div class="sec-dev" style="display:flex;gap:8px;align-items:center;">
+        <select id="device-shop-filter" onchange="renderDeviceList()" style="font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px;">
+          <option value="">Tất cả shop</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadDevices()">↻ Làm mới</button>
+      </div>
+    </div>
+    <div id="device-list" class="sec-dev" style="font-size:12px;color:var(--muted);">Chưa tải.</div>
+    <div class="sec-dev" style="font-size:11px;color:var(--muted);margin-top:8px;">Mỗi máy báo cáo ~2 lần/ngày (giữ trong hạn mức miễn phí của Cloudflare) — nên đây là "máy có hoạt động trong 24h qua", không phải trạng thái online theo thời gian thực.</div>
+  </div>
+
 </div>
 
 <script>
@@ -448,6 +451,7 @@ function initAdmin() {
 
   document.getElementById('gh-token')?.addEventListener('change', saveLocalSettings);
 
+  initSections();
   render();
   if (document.getElementById('gh-token').value) loadFromGitHub();
   setupIdleRedirect();
@@ -667,6 +671,30 @@ function render() {
       </div>
     </div>`;
   }).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  THU GỌN / BUNG CÁC KHỐI Ở CUỐI TRANG
+//  Mặc định thu gọn cho trang gọn; nhớ lựa chọn của từng người qua localStorage.
+// ═══════════════════════════════════════════════════════════════
+function toggleSection(key, forceOpen) {
+  const open = forceOpen !== undefined
+    ? forceOpen
+    : document.querySelector('.sec-' + key)?.style.display === 'none';
+  document.querySelectorAll('.sec-' + key).forEach(el => {
+    el.style.display = open ? '' : 'none';
+  });
+  const caret = document.getElementById(key + '-caret');
+  if (caret) caret.textContent = open ? '▾' : '▸';
+  try { localStorage.setItem('cps_sec_' + key, open ? '1' : '0'); } catch (e) {}
+}
+
+function initSections() {
+  ['shop', 'log', 'dev'].forEach(key => {
+    let open = false; // mặc định thu gọn
+    try { open = localStorage.getItem('cps_sec_' + key) === '1'; } catch (e) {}
+    toggleSection(key, open);
+  });
 }
 
 function escHtml(s) {
