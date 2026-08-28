@@ -43,6 +43,11 @@
       inset:unset; left:0; top:50%; transform:translateY(-50%);
       width:100vw; height:100vw;
     }
+    /* 9:16 video trên màn dọc (thường cao hơn 9:16): letterbox trên/dưới */
+    #yt-player.aspect-tall, #gd-player.aspect-tall {
+      inset:unset; left:0; top:50%; transform:translateY(-50%);
+      width:100vw; height:177.78vw;
+    }
     #yt-player iframe { width:100%!important; height:100%!important; border:none; pointer-events:none; }
     #gd-player { display:none; }
     #img-player { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:none; pointer-events:none; }
@@ -189,6 +194,7 @@
       el.classList.remove('aspect-tall', 'aspect-wide', 'aspect-square');
       if (!isCover) {
         if (v.aspect === '16:9') el.classList.add('aspect-wide');
+        if (v.aspect === '9:16') el.classList.add('aspect-tall');
         if (v.aspect === '1:1')  el.classList.add('aspect-square');
         // aspect '9:16' trên màn 9:16 = fill hết, không cần class
       }
