@@ -13,7 +13,7 @@ const PLAYLIST_LANDSCAPE = [
 
 const PLAYLIST_PORTRAIT = [
   { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade' }
+  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade', aspect: '9:16' }
 ];
 
 const APP_CONFIG = {
