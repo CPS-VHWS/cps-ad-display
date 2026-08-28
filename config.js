@@ -4,16 +4,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 const PLAYLIST_LANDSCAPE = [
-  { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
+  { id: 'RNvZxqc5m6o', duration: 41, label: 'SCamp 2026', campaign: 'trade' },
   { id: 'aCJFpFS6OPE', duration: 31, label: 'Lên đời smartphone mới', campaign: 'trade' },
   { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tặng balo', campaign: 'trade' },
   { id: 'uu_52j5NxG8', duration: 30, label: 'Bộ phụ kiện GenZ & Quà Limited 2026', campaign: 'trade' },
-  { id: '7doGCi1sBXY', duration: 15, label: 'DEMO MDM LAPTOP CAMP 2/9', campaign: 'trade' }
+  { id: 'YChx41iM5Bw', duration: 15, label: 'Camp 2/9', campaign: 'trade' }
 ];
 
 const PLAYLIST_PORTRAIT = [
   { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'WkF7cG9sYAo', duration: 15, label: 'DEMO MDM ĐIỆN THOẠI CAMP 2/9', campaign: 'trade' }
+  { id: 'k4n3KK0862g', duration: 15, label: 'Camp 2/9', campaign: 'trade' }
 ];
 
 const APP_CONFIG = {
