@@ -1,5 +1,5 @@
 # Code Review Log — cps-ad-display
-_Last reviewed: 2026-08-27_
+_Last reviewed: 2026-08-28_
 
 ---
 
@@ -51,6 +51,9 @@ _Last reviewed: 2026-08-27_
 | 42 | `index.html` | `skipEnd` (ẩn end-screen YouTube) chỉ tồn tại trong `vertical/index.html` — admin vẫn hiện checkbox "✂ end screen" cho cả 2 tab nên bật cho video ngang không có tác dụng gì | Port watchdog `ytSkipWatchdog` từ vertical sang landscape — parity 2 file |
 | 43 | `sw.js` | `SHELL_ASSETS` chỉ precache shell của màn ngang — màn dọc (`vertical/index.html`, `vertical/manifest.json`) không cache nên không mở được khi mất mạng, dù docs nói có offline fallback | Thêm shell files của vertical + icons vào `SHELL_ASSETS`, bump cache `v3` → `v4` |
 | 44 | `admin.html` | Field "Giờ tự động reload" (`dailyReloadHour`/`dailyReloadMinute`) ghi vào config.js nhưng không display page nào đọc — xem D6 cũ, giờ resolve luôn thay vì tiếp tục defer | Xoá field khỏi UI + `buildConfigJs()`; hành vi thực tế (reload mỗi đầu giờ, không cấu hình được) đã khớp `setup.md` §7.3 |
+| 51 | `index.html` / `vertical/index.html` | Player CSS dùng `min-width/min-height` kiểu cover — YouTube phóng to và cắt 2 bên/trên dưới cho video không khớp tỉ lệ màn hình (16:9 phát trên màn 9:16 bị cắt trái/phải) | Đổi sang `inset:0; width:100%; height:100%` → YouTube tự letterbox bên trong; thêm CSS class `.cover` để bật lại cover theo từng video khi cần |
+| 52 | `admin.html` | Color picker `#cfg-letterbox-color` không có `onchange` handler → chọn màu bằng tay không enable nút Lưu, chỉ preset button mới trigger `markDirty` | Thêm `onchange="markDirty(true)"` vào input |
+| 53 | `index.html` / `vertical/index.html` | Toggle "phóng to" (fit=cover) chỉ toggle class `.cover` trên `yt-player`/`gd-player` — khi video type=image, `img-player` hiển thị nhưng `object-fit` vẫn cứng `contain` trong CSS, toggle không có tác dụng | Thêm `document.getElementById('img-player').style.objectFit = isCover ? 'cover' : 'contain'` trong `syncAndPlay()` |
 
 ---
 
@@ -58,6 +61,7 @@ _Last reviewed: 2026-08-27_
 
 | # | File | Feature |
 |---|------|---------|
+| F2 | `admin.html`, `index.html`, `vertical/index.html` | **Letterbox color + per-video fit mode.** Admin có color picker chọn màu nền lằn (preset đen/đỏ CPS `#E30613`/trắng), lưu vào `APP_CONFIG.letterboxColor`. Mỗi video card có toggle "⛶ phóng to" (`fit: 'cover'`) — tắt = contain (full video, lằn màu), bật = cover (phóng to lấp đầy, cắt viền). Display page áp màu cho `#player-wrap` khi `onPlayerReady`, toggle CSS class `.cover` + `img-player.objectFit` trong `syncAndPlay()` theo từng video. |
 | F1 | `config-watcher.js`, `index.html`, `vertical/index.html`, `functions/api/heartbeat.js`, `admin.html` | **Device heartbeat / online count.** Mỗi máy tự sinh 1 `deviceId` random lưu `localStorage`, gửi POST `/api/heartbeat` (id, mode, region, campaign) theo đúng nhịp `syncIntervalMinutes` (dùng chung interval với config-watcher, không thêm timer riêng). Function ghi vào Cloudflare KV với `expirationTtl: 1800`s — máy ngừng báo cáo quá 30 phút tự "rớt" khỏi danh sách, không cần logic lọc thời gian riêng. Admin Dashboard có panel "📡 Máy đang online" (đếm + bảng chi tiết mode/region/campaign/lần cuối), tự refresh mỗi 30s. Endpoint GET yêu cầu `ADMIN_API_KEY` như các API khác; POST không auth (không có gì nhạy cảm, tệ nhất là heartbeat giả không ảnh hưởng hiển thị video). **Cần thêm 1 KV namespace binding (`HEARTBEAT_KV`) trên Cloudflare Dashboard trước khi dùng được** — xem `setup.md` §3.1d. `sw.js` cache bump `v4` → `v5` để máy đã cài nhận code mới (config-watcher.js là shell asset, cache-first) |
 
 **Verified live trên production sau merge (2026-08-27):**

@@ -329,7 +329,7 @@
     </div>
     <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
       <label style="margin:0;font-size:13px;">Màu nền lằn đen</label>
-      <input id="cfg-letterbox-color" type="color" value="#000000" style="width:38px;height:28px;padding:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:none;">
+      <input id="cfg-letterbox-color" type="color" value="#000000" onchange="markDirty(true)" style="width:38px;height:28px;padding:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:none;">
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#000000';markDirty(true)">Đen</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#E30613';markDirty(true)" style="background:#E30613;color:#fff;border-color:#E30613;">Đỏ CPS</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#ffffff';markDirty(true)">Trắng</button>

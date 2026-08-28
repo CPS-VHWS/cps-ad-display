@@ -175,6 +175,7 @@
     ['yt-player','gd-player'].forEach(id => {
       document.getElementById(id).classList.toggle('cover', isCover);
     });
+    document.getElementById('img-player').style.objectFit = isCover ? 'cover' : 'contain';
 
     if (v.type === 'image') {
       const el = document.getElementById('img-player');
