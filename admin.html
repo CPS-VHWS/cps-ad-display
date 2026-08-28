@@ -347,7 +347,7 @@
   <div class="panel" style="margin-bottom:20px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
       <div>
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px;cursor:pointer;user-select:none;" onclick="toggleSection('shop')"><span id="shop-caret">▸</span> 🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span></div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px;cursor:pointer;user-select:none;" onclick="toggleSection('shop')"><span id="shop-caret">▸</span> 🏬 Danh sách Shop <span id="shop-count" class="tab-badge">—</span> <span id="shop-dirty" style="display:none;color:var(--danger);font-size:11px;font-weight:600;">● chưa lưu</span></div>
         <div class="sec-shop" style="font-size:12px;color:var(--muted);">Cột: <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">name, region</code></div>
         <div class="sec-shop" style="font-size:11px;color:var(--muted);margin-top:3px;">Máy sẽ tải danh sách này để chọn Shop lúc kích hoạt lần đầu. region: mn / mb (trống = không gán khu vực).</div>
       </div>
@@ -489,7 +489,7 @@ function setupIdleRedirect() {
 
   function startCountdown() {
     // Có thay đổi chưa lưu → không auto-redirect (tránh mất dữ liệu)
-    if (dirty) { reset(); return; }
+    if (dirty || _shopsDirty) { reset(); return; }
     remaining = 30000; // 30s warning before redirect
     banner.style.display = 'block';
     clearInterval(countdownInterval);
@@ -909,7 +909,7 @@ function copyUrl(id) {
 }
 
 window.addEventListener('beforeunload', e => {
-  if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  if (dirty || _shopsDirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
 function markDirty(val) {
@@ -1051,6 +1051,16 @@ function downloadSampleCSV() {
 // ═══════════════════════════════════════════════════════════════
 let _shopList = [];
 let _shopSha = null;
+// Cờ riêng cho danh sách shop: `dirty` chỉ theo dõi playlist, mà cả cảnh báo
+// beforeunload lẫn chặn auto-redirect khi idle đều dựa vào nó — nếu không có cờ
+// này, import 1 file CSV vài trăm shop rồi rời máy 2 phút là mất sạch, không báo.
+let _shopsDirty = false;
+
+function markShopsDirty(val) {
+  _shopsDirty = val;
+  const el = document.getElementById('shop-dirty');
+  if (el) el.style.display = val ? 'inline' : 'none';
+}
 
 async function loadShops() {
   try {
@@ -1058,6 +1068,7 @@ async function loadShops() {
     _shopSha = data.sha;
     _shopList = JSON.parse(data.content || '[]');
   } catch(e) { _shopList = []; }
+  markShopsDirty(false); // vừa đồng bộ với GitHub
   renderShopList();
 }
 
@@ -1077,6 +1088,7 @@ function renderShopList() {
 
 function removeShop(i) {
   _shopList.splice(i, 1);
+  markShopsDirty(true);
   renderShopList();
 }
 
@@ -1101,8 +1113,9 @@ function importShopCSV() {
           _shopList.push({ name, region: region.toLowerCase() });
           added++;
         }
+        if (added) markShopsDirty(true);
         renderShopList();
-        toast(`Import shop: +${added} shop`, 'success');
+        toast(`Import shop: +${added} shop — nhớ bấm "Lưu lên GitHub"`, 'success');
       } catch(err) { toast('Lỗi đọc CSV: ' + err.message, 'error'); }
     };
     reader.readAsText(file, 'UTF-8');
@@ -1124,6 +1137,7 @@ async function saveShops() {
     if (_shopSha) body.sha = _shopSha;
     const data = await apiFetch('shops', { method:'PUT', body: JSON.stringify(body) });
     _shopSha = data.sha;
+    markShopsDirty(false);
     toast('Đã lưu danh sách shop lên GitHub', 'success');
   } catch(e) { toast('Lỗi: ' + e.message, 'error'); }
 }
