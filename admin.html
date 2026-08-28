@@ -669,6 +669,13 @@ function render() {
           </select>
           ${isYT ? `<span class="tag-sep">·</span><label class="region-chk" title="Tự động bỏ qua ~20s cuối để ẩn playlist đề xuất YouTube"><input type="checkbox" onchange="updateSkipEnd('${activeTab}',${i},this.checked)" ${v.skipEnd?'checked':''}> ✂ end screen</label>` : ''}
           <span class="tag-sep">·</span><label class="region-chk" title="Bật: phóng to lấp đầy màn (có thể cắt viền). Tắt: hiển thị đủ video, lằn nền nếu tỉ lệ lệch"><input type="checkbox" onchange="updateFit('${activeTab}',${i},this.checked)" ${v.fit==='cover'?'checked':''}> ⛶ phóng to</label>
+          <span class="tag-sep">·</span>
+          <select class="campaign-sel" title="Tỉ lệ khung hình của video — cần đặt đúng để màu lằn hoạt động" onchange="updateAspect('${activeTab}',${i},this.value)">
+            <option value="">Tỉ lệ: tự động</option>
+            <option value="16:9" ${v.aspect==='16:9'?'selected':''}>16:9 (ngang)</option>
+            <option value="9:16" ${v.aspect==='9:16'?'selected':''}>9:16 (dọc)</option>
+            <option value="1:1" ${v.aspect==='1:1'?'selected':''}>1:1 (vuông)</option>
+          </select>
         </div>
       </div>
       <div class="video-actions">
@@ -825,6 +832,10 @@ function updateSkipEnd(tab, i, checked) {
 }
 function updateFit(tab, i, checked) {
   if (checked) playlists[tab][i].fit = 'cover'; else delete playlists[tab][i].fit;
+  markDirty(true); render();
+}
+function updateAspect(tab, i, val) {
+  if (val) playlists[tab][i].aspect = val; else delete playlists[tab][i].aspect;
   markDirty(true); render();
 }
 function updateCampaign(tab, i, val) {
@@ -1167,6 +1178,7 @@ function buildConfigJs() {
     if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
     if (v.skipEnd)        parts.push(`skipEnd: true`);
     if (v.fit === 'cover') parts.push(`fit: 'cover'`);
+    if (v.aspect)          parts.push(`aspect: '${esc(v.aspect)}'`);
     return `  { ${parts.join(', ')} }`;
   }
   const ls = playlists.landscape.map(row).join(',\n') || '  // trống';
