@@ -1,5 +1,15 @@
 [
   {
+    "ts": 1787895621991,
+    "changes": [
+      "Landscape +Added \"Camp 2/9\" (YouTube) at #5",
+      "Landscape -Removed \"DEMO MDM LAPTOP CAMP 2/9\" (was #5)",
+      "Landscape ~Campaign \"SCamp 2026\": scamp -> trade",
+      "Portrait +Added \"Camp 2/9\" (YouTube) at #2",
+      "Portrait -Removed \"DEMO MDM ĐIỆN THOẠI CAMP 2/9\" (was #2)"
+    ]
+  },
+  {
     "ts": 1787840066901,
     "changes": [
       "Landscape ~Duration \"DEMO MDM LAPTOP CAMP 2/9\": --s -> 15s",
