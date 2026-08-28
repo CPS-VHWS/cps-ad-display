@@ -20,6 +20,6 @@ const APP_CONFIG = {
   syncIntervalMinutes: 8,
   showStatusBar: true,
   errorSkipDelay: 2000,
-  letterboxColor: '#e30613',
+  letterboxColor: '#d11423',
   campaigns: ['scamp', 'trade', 'quockhanh'],
 };
