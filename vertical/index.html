@@ -43,10 +43,10 @@
       inset:unset; left:0; top:50%; transform:translateY(-50%);
       width:100vw; height:100vw;
     }
-    /* 9:16 video trên màn dọc (thường cao hơn 9:16): letterbox trên/dưới */
+    /* 9:16 video trên màn dọc: tự fit đúng tỉ lệ, căn giữa, background hiện xung quanh */
     #yt-player.aspect-tall, #gd-player.aspect-tall {
-      inset:unset; left:0; top:50%; transform:translateY(-50%);
-      width:100vw; height:177.78vw;
+      inset:unset; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(100vw, 56.25vh); height:min(100vh, 177.78vw);
     }
     #yt-player iframe { width:100%!important; height:100%!important; border:none; pointer-events:none; }
     #gd-player { display:none; }
