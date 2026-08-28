@@ -1,5 +1,12 @@
 [
   {
+    "ts": 1787899144804,
+    "changes": [
+      "Landscape ~Renamed \"Camp 2/9\" -> \"Video Camp 2/9\"",
+      "Portrait ~Renamed \"Camp 2/9\" -> \"Video Camp 2/9\""
+    ]
+  },
+  {
     "ts": 1787895768977,
     "changes": [
       "Landscape ~Campaign \"SCamp 2026\": trade -> scamp"
