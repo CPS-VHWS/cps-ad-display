@@ -69,3 +69,42 @@ export async function ghPut(env, path, content, message, sha) {
   if (!res.ok) throw new Error(data.message || `GitHub PUT failed: ${res.status}`);
   return data;
 }
+
+// ── Binary helpers (video dự phòng) ─────────────────────────────
+// ghGet/ghPut ở trên xử lý nội dung dạng chuỗi UTF-8 nên không dùng được cho
+// file nhị phân (mp4). Hai hàm dưới làm việc trực tiếp với base64.
+
+// Chỉ lấy metadata (sha, size) — không decode nội dung, tránh vỡ với file lớn.
+// Trả null nếu file chưa tồn tại.
+export async function ghGetMeta(env, path) {
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'cps-ad-display-admin',
+    },
+  });
+  if (res.status === 404) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || `GitHub GET failed: ${res.status}`);
+  return { sha: data.sha, size: data.size };
+}
+
+// Ghi file nhị phân: nhận sẵn chuỗi base64, không encode lại.
+export async function ghPutBase64(env, path, base64, message, sha) {
+  const body = { message, content: base64 };
+  if (sha) body.sha = sha;
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'cps-ad-display-admin',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || `GitHub PUT failed: ${res.status}`);
+  return data;
+}

@@ -352,6 +352,34 @@
     <div id="shop-list" class="sec-shop" style="font-size:12px;color:var(--muted);margin-top:10px;">Chưa tải.</div>
   </div>
 
+  <!-- Video dự phòng -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px;cursor:pointer;user-select:none;" onclick="toggleSection('vid')">
+      <span id="vid-caret">▸</span> 🎞 Video dự phòng (khi mất mạng)
+    </div>
+    <div class="sec-vid" style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+      Máy tải sẵn về bộ nhớ trong. Khi mất mạng không phát được YouTube, máy tự phát file này (lặp) cho tới khi có mạng lại.
+      Nên dùng clip thương hiệu chung, <b>không có hạn sử dụng</b> — vì nó chạy lúc mất mạng, không ai nhìn thấy để phát hiện lỗi thời.
+      Yêu cầu: mp4 (H.264), <b>tối đa 20MB</b>, khuyến nghị 15–60 giây, không cần âm thanh (màn hình luôn tắt tiếng).
+    </div>
+
+    <div class="sec-vid" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;min-width:120px;">▬ <b>Ngang</b> (1920×1080)</span>
+        <span id="vid-info-landscape" style="font-size:11px;color:var(--muted);min-width:150px;">Chưa tải.</span>
+        <input type="file" id="vid-file-landscape" accept="video/mp4" style="font-size:11px;width:auto;">
+        <button class="btn btn-primary btn-sm" onclick="uploadVideo('landscape')">↑ Upload</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;min-width:120px;">▮ <b>Dọc</b> (1080×1920)</span>
+        <span id="vid-info-portrait" style="font-size:11px;color:var(--muted);min-width:150px;">Chưa tải.</span>
+        <input type="file" id="vid-file-portrait" accept="video/mp4" style="font-size:11px;width:auto;">
+        <button class="btn btn-primary btn-sm" onclick="uploadVideo('portrait')">↑ Upload</button>
+      </div>
+      <div id="vid-status" style="font-size:11px;color:var(--muted);min-height:14px;"></div>
+    </div>
+  </div>
+
   <!-- Changelog -->
   <div style="margin-top:28px;margin-bottom:40px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -690,7 +718,7 @@ function toggleSection(key, forceOpen) {
 }
 
 function initSections() {
-  ['shop', 'log', 'dev'].forEach(key => {
+  ['shop', 'vid', 'log', 'dev'].forEach(key => {
     let open = false; // mặc định thu gọn
     try { open = localStorage.getItem('cps_sec_' + key) === '1'; } catch (e) {}
     toggleSection(key, open);
@@ -1034,6 +1062,74 @@ function downloadSampleCSV() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  VIDEO DỰ PHÒNG (phát khi máy mất mạng)
+// ═══════════════════════════════════════════════════════════════
+const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
+
+function fmtMB(b) { return (b / 1048576).toFixed(1) + ' MB'; }
+
+async function loadVideoInfo() {
+  try {
+    const data = await apiFetch('video');
+    ['landscape', 'portrait'].forEach(slot => {
+      const el = document.getElementById('vid-info-' + slot);
+      if (!el) return;
+      el.textContent = data[slot]?.exists
+        ? '✓ đã có · ' + fmtMB(data[slot].size)
+        : '— chưa có file';
+      el.style.color = data[slot]?.exists ? 'var(--accent)' : 'var(--muted)';
+    });
+  } catch (e) {
+    ['landscape', 'portrait'].forEach(slot => {
+      const el = document.getElementById('vid-info-' + slot);
+      if (el) el.textContent = 'lỗi: ' + e.message;
+    });
+  }
+}
+
+// Đọc file thành base64. FileReader trả dạng data URL nên cắt bỏ phần tiền tố.
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = () => reject(new Error('Không đọc được file'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function uploadVideo(slot) {
+  const status = document.getElementById('vid-status');
+  const input = document.getElementById('vid-file-' + slot);
+  const file = input?.files?.[0];
+
+  if (!file) { status.textContent = 'Chưa chọn file.'; return; }
+  if (!/\.mp4$/i.test(file.name) && file.type !== 'video/mp4') {
+    status.textContent = 'Chỉ nhận file .mp4'; return;
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    status.textContent = `File ${fmtMB(file.size)} — vượt giới hạn 20MB. Nén lại rồi thử tiếp.`;
+    return;
+  }
+
+  status.style.color = 'var(--muted)';
+  status.textContent = `Đang tải lên ${fmtMB(file.size)}... (có thể mất 1-2 phút, đừng đóng tab)`;
+  try {
+    const contentBase64 = await fileToBase64(file);
+    await apiFetch('video', {
+      method: 'PUT',
+      body: JSON.stringify({ slot, contentBase64 }),
+    });
+    status.style.color = 'var(--accent)';
+    status.textContent = 'Đã tải lên xong. Cloudflare deploy ~30 giây, sau đó máy sẽ tự tải về.';
+    input.value = '';
+    loadVideoInfo();
+  } catch (e) {
+    status.style.color = 'var(--danger)';
+    status.textContent = 'Lỗi: ' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  DANH SÁCH SHOP (shops.json)
 // ═══════════════════════════════════════════════════════════════
 let _shopList = [];
@@ -1224,6 +1320,7 @@ async function loadFromGitHub() {
     loadChangelog();
     loadDevices();
     loadShops();
+    loadVideoInfo();
     // 5 phút/lần và chỉ khi tab đang hiện: hạn mức list của KV free tier là
     // 1.000/ngày — refresh 30s như trước sẽ đốt sạch chỉ sau ~8 tiếng mở tab.
     if (!_deviceRefreshTimer) {
