@@ -327,6 +327,14 @@
       <input id="cfg-status" type="checkbox" checked>
       <label style="margin:0;cursor:pointer;" for="cfg-status">Hiện thanh trạng thái</label>
     </div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+      <label style="margin:0;font-size:13px;">Màu nền lằn đen</label>
+      <input id="cfg-letterbox-color" type="color" value="#000000" style="width:38px;height:28px;padding:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:none;">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#000000';markDirty(true)">Đen</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#E30613';markDirty(true)" style="background:#E30613;color:#fff;border-color:#E30613;">Đỏ CPS</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#ffffff';markDirty(true)">Trắng</button>
+      <span style="font-size:11px;color:var(--muted);">Màu hiện ra khi video không phủ kín màn hình (lằn ngang/dọc)</span>
+    </div>
   </div>
 
   <!-- Save -->
@@ -660,6 +668,7 @@ function render() {
             ${campOpts}
           </select>
           ${isYT ? `<span class="tag-sep">·</span><label class="region-chk" title="Tự động bỏ qua ~20s cuối để ẩn playlist đề xuất YouTube"><input type="checkbox" onchange="updateSkipEnd('${activeTab}',${i},this.checked)" ${v.skipEnd?'checked':''}> ✂ end screen</label>` : ''}
+          <span class="tag-sep">·</span><label class="region-chk" title="Bật: phóng to lấp đầy màn (có thể cắt viền). Tắt: hiển thị đủ video, lằn nền nếu tỉ lệ lệch"><input type="checkbox" onchange="updateFit('${activeTab}',${i},this.checked)" ${v.fit==='cover'?'checked':''}> ⛶ phóng to</label>
         </div>
       </div>
       <div class="video-actions">
@@ -812,6 +821,10 @@ function updateDuration(tab, i, val) {
 }
 function updateSkipEnd(tab, i, checked) {
   if (checked) playlists[tab][i].skipEnd = true; else delete playlists[tab][i].skipEnd;
+  markDirty(true); render();
+}
+function updateFit(tab, i, checked) {
+  if (checked) playlists[tab][i].fit = 'cover'; else delete playlists[tab][i].fit;
   markDirty(true); render();
 }
 function updateCampaign(tab, i, val) {
@@ -1119,9 +1132,10 @@ async function saveShops() {
 //  BUILD CONFIG.JS
 // ═══════════════════════════════════════════════════════════════
 function buildConfigJs() {
-  const syncMin    = parseInt(document.getElementById('cfg-sync').value) || 5;
-  const showStatus = document.getElementById('cfg-status').checked;
-  const campList   = campaignList;
+  const syncMin        = parseInt(document.getElementById('cfg-sync').value) || 5;
+  const showStatus     = document.getElementById('cfg-status').checked;
+  const letterboxColor = document.getElementById('cfg-letterbox-color').value || '#000000';
+  const campList       = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
 
@@ -1137,7 +1151,8 @@ function buildConfigJs() {
       if (!isAll) parts.push(`regions: [${v.regions.map(r=>`'${esc(r)}'`).join(', ')}]`);
     }
     if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
-    if (v.skipEnd)  parts.push(`skipEnd: true`);
+    if (v.skipEnd)        parts.push(`skipEnd: true`);
+    if (v.fit === 'cover') parts.push(`fit: 'cover'`);
     return `  { ${parts.join(', ')} }`;
   }
   const ls = playlists.landscape.map(row).join(',\n') || '  // trống';
@@ -1160,6 +1175,7 @@ const APP_CONFIG = {
   syncIntervalMinutes: ${syncMin},
   showStatusBar: ${showStatus},
   errorSkipDelay: 2000,
+  letterboxColor: '${esc(letterboxColor)}',
   campaigns: [${campList.map(c=>`'${esc(c)}'`).join(', ')}],
 };
 `;
@@ -1209,8 +1225,9 @@ async function loadFromGitHub() {
     playlists.portrait  = parsePlaylist(content,'PLAYLIST_PORTRAIT');
     const cfg = parseAppConfig(content);
     if (cfg) {
-      document.getElementById('cfg-sync').value        = cfg.syncIntervalMinutes ?? 5;
-      document.getElementById('cfg-status').checked    = cfg.showStatusBar ?? true;
+      document.getElementById('cfg-sync').value                = cfg.syncIntervalMinutes ?? 5;
+      document.getElementById('cfg-status').checked            = cfg.showStatusBar ?? true;
+      document.getElementById('cfg-letterbox-color').value     = cfg.letterboxColor || '#000000';
     }
     // Gộp cả campaign đang được video sử dụng: config cũ có thể chứa tag không
     // nằm trong APP_CONFIG.campaigns — nếu bỏ qua, card sẽ hiện "Luôn chạy" trong

@@ -16,11 +16,16 @@
     html, body { width:100%; height:100%; background:#000; overflow:hidden; cursor:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
     #player-wrap { position:fixed; inset:0; overflow:hidden; background:#000; }
 
-    /* Contain — đúng tỉ lệ gốc, lằn đen nếu video không khớp màn hình */
+    /* Contain (mặc định) — đúng tỉ lệ gốc, lằn nền nếu video không khớp màn hình */
     #yt-player, #gd-player {
       position:absolute; inset:0;
       width:100%; height:100%;
       pointer-events:none; border:none;
+    }
+    /* Cover — phóng to lấp đầy màn, có thể cắt viền */
+    #yt-player.cover, #gd-player.cover {
+      inset:unset; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:100vw; height:56.25vw; min-width:177.78vh; min-height:100vh;
     }
     #yt-player iframe { width:100%!important; height:100%!important; border:none; pointer-events:none; }
     #gd-player { display:none; }
@@ -110,6 +115,7 @@
   function onPlayerReady() {
     if (isReady) return; // guard: YouTube API đôi khi fire onReady 2 lần
     isReady = true; player.mute();
+    document.getElementById('player-wrap').style.background = APP_CONFIG.letterboxColor || '#000';
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 800);
     syncServerClock();
     scheduleHourlyReload(); startStatusTicker(); startConfigWatcher('config.js');
@@ -162,6 +168,12 @@
     document.getElementById('yt-player').style.display  = 'none';
     document.getElementById('gd-player').style.display  = 'none';
     document.getElementById('img-player').style.display = 'none';
+
+    // Áp dụng fit mode (contain mặc định / cover nếu video bật phóng to)
+    const isCover = v.fit === 'cover';
+    ['yt-player','gd-player'].forEach(id => {
+      document.getElementById(id).classList.toggle('cover', isCover);
+    });
 
     if (v.type === 'image') {
       const el = document.getElementById('img-player');
