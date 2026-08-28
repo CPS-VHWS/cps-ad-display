@@ -13,12 +13,13 @@ const PLAYLIST_LANDSCAPE = [
 
 const PLAYLIST_PORTRAIT = [
   { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade' }
+  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade', fit: 'cover' }
 ];
 
 const APP_CONFIG = {
   syncIntervalMinutes: 8,
   showStatusBar: true,
   errorSkipDelay: 2000,
+  letterboxColor: '#e30613',
   campaigns: ['scamp', 'trade', 'quockhanh'],
 };
