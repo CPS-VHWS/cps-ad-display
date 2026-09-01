@@ -320,8 +320,34 @@
   <h2>Cài đặt app</h2>
   <div class="panel" style="margin-bottom:20px;">
     <div class="config-row">
-      <div class="field"><label>Mốc đồng bộ (phút)</label><input id="cfg-sync" type="number" value="5" min="1" max="120"></div>
+      <div class="field"><label>Mốc đồng bộ (phút)</label><input id="cfg-sync" type="number" value="5" min="1" max="120" oninput="markDirty(true)"></div>
+      <div class="field"><label>Nguồn phát ưu tiên</label>
+        <select id="cfg-source" onchange="markDirty(true)">
+          <option value="online" selected>Ưu tiên Online</option>
+          <option value="offline">Ưu tiên Offline</option>
+        </select>
+      </div>
+      <div class="field"><label>Mốc reset video offline (phút)</label>
+        <select id="cfg-offline-reset" onchange="markDirty(true)">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="5" selected>5</option><option value="10">10</option>
+          <option value="15">15</option><option value="20">20</option>
+          <option value="30">30</option><option value="60">60</option>
+        </select>
+      </div>
     </div>
+    <div class="config-row" style="margin-top:10px;">
+      <div class="field"><label>Video offline — màn dọc</label>
+        <input id="cfg-video-portrait" type="text" placeholder="videos/offline-portrait-v1.mp4" oninput="markDirty(true)"></div>
+      <div class="field"><label>Video offline — màn ngang</label>
+        <input id="cfg-video-landscape" type="text" placeholder="videos/offline-landscape-v1.mp4" oninput="markDirty(true)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Video offline: app tự tải về máy và phát khi mất mạng. <b>Đổi video thì đặt tên file MỚI</b> (vd đổi -v1 thành -v2) rồi sửa ô này — máy so tên và dấu vân tay file để biết có bản mới. Để trống thì máy dùng video nhúng sẵn trong app. Chỉ nhận đường dẫn trên chính tên miền này.</div>
+    <div style="margin-top:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="forceSourceReapply=true;markDirty(true);toast('Sẽ áp lại nguồn phát cho toàn bộ máy khi bấm Lưu.','info')">⟳ Áp lại nguồn phát cho toàn bộ máy</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Nguồn phát: admin đặt ở đây thì các máy tự nhận. Nhân viên vẫn chỉnh lại được trên từng máy, và chỉnh tay đó được giữ cho tới khi admin đổi lại ô này. Sửa playlist KHÔNG làm mất chỉnh tay. Nút "Áp lại" dùng khi muốn ép toàn bộ máy về đúng ô này dù giá trị không đổi.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Mốc reset video offline: khi máy mất mạng và đang phát video lưu trong máy, cứ tới mốc này (đếm từ đầu mỗi giờ) là các máy đồng loạt cho video chạy lại từ đầu để khớp nhau.</div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">Màn hình luôn tự reload vào đầu mỗi giờ (8:00, 9:00...) để nhận playlist mới — không cấu hình được giờ riêng.</div>
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
       <input id="cfg-status" type="checkbox" checked>
@@ -333,7 +359,7 @@
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#000000';markDirty(true)">Đen</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#df092d';markDirty(true)" style="background:#df092d;color:#fff;border-color:#df092d;">Đỏ CPS</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cfg-letterbox-color').value='#ffffff';markDirty(true)">Trắng</button>
-      <span style="font-size:11px;color:var(--muted);">Màu hiện ra khi video không phủ kín màn hình (lằn ngang/dọc)</span>
+      <span style="font-size:11px;color:var(--muted);">Màu hiện ra khi video không phủ kín màn hình (lằn ngang/dọc). Áp cho cả video online lẫn video offline chạy trong app.</span>
     </div>
   </div>
 
@@ -1156,10 +1182,31 @@ async function saveShops() {
 // ═══════════════════════════════════════════════════════════════
 //  BUILD CONFIG.JS
 // ═══════════════════════════════════════════════════════════════
+// Giá trị nguồn phát và con dấu đọc được lúc tải config — dùng để biết admin có
+// thật sự động vào ô nguồn phát hay không. Con dấu chỉ đổi khi có động vào (hoặc
+// bấm Áp lại); nhờ vậy sửa playlist không quét mất chỉnh tay trên từng máy.
+let loadedSourceMode  = null;
+let loadedSourceStamp = 0;
+let forceSourceReapply = false;
+
 function buildConfigJs() {
   const syncMin        = parseInt(document.getElementById('cfg-sync').value) || 5;
   const showStatus     = document.getElementById('cfg-status').checked;
   const letterboxColor = document.getElementById('cfg-letterbox-color').value || '#000000';
+  const offReset       = parseInt(document.getElementById('cfg-offline-reset').value) || 5;
+  const srcMode        = document.getElementById('cfg-source').value === 'offline' ? 'offline' : 'online';
+  // Con dấu mới = ra lệnh cho máy nhận lại. Giữ nguyên con dấu cũ = để yên chỉnh tay.
+  //
+  // CHỈ hai việc sinh con dấu mới: admin đổi ô nguồn phát, hoặc bấm nút "Áp lại".
+  // Cố ý KHÔNG sinh con dấu khi con dấu đang là 0 — làm vậy thì lần Lưu đầu tiên dù chỉ
+  // sửa playlist cũng lật nguồn phát của cả 500 máy, đúng thứ mà đặt 0 là để tránh.
+  //
+  // Math.max để con dấu mới CHẮC CHẮN khác con dấu cũ, kể cả khi hai lần lưu rơi đúng
+  // cùng một mili giây hoặc đồng hồ máy admin bị chỉnh lùi — trùng con dấu là máy bỏ qua lệnh.
+  const srcStamp       = (forceSourceReapply || srcMode !== loadedSourceMode)
+    ? Math.max(Date.now(), loadedSourceStamp + 1) : loadedSourceStamp;
+  const vidPortrait    = document.getElementById('cfg-video-portrait').value.trim();
+  const vidLandscape   = document.getElementById('cfg-video-landscape').value.trim();
   const campList       = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
@@ -1202,6 +1249,11 @@ const APP_CONFIG = {
   showStatusBar: ${showStatus},
   errorSkipDelay: 2000,
   letterboxColor: '${esc(letterboxColor)}',
+  offlineResetMinutes: ${offReset},
+  sourceMode: '${srcMode}',
+  sourceModeStamp: ${srcStamp},
+  offlineVideoPortrait: '${esc(vidPortrait)}',
+  offlineVideoLandscape: '${esc(vidLandscape)}',
   campaigns: [${campList.map(c=>`'${esc(c)}'`).join(', ')}],
 };
 `;
@@ -1254,6 +1306,13 @@ async function loadFromGitHub() {
       document.getElementById('cfg-sync').value                = cfg.syncIntervalMinutes ?? 5;
       document.getElementById('cfg-status').checked            = cfg.showStatusBar ?? true;
       document.getElementById('cfg-letterbox-color').value     = cfg.letterboxColor || '#000000';
+      document.getElementById('cfg-offline-reset').value       = cfg.offlineResetMinutes ?? 5;
+      loadedSourceMode   = cfg.sourceMode === 'offline' ? 'offline' : 'online';
+      loadedSourceStamp  = cfg.sourceModeStamp || 0;
+      forceSourceReapply = false;
+      document.getElementById('cfg-source').value              = loadedSourceMode;
+      document.getElementById('cfg-video-portrait').value      = cfg.offlineVideoPortrait || '';
+      document.getElementById('cfg-video-landscape').value     = cfg.offlineVideoLandscape || '';
     }
     // Gộp cả campaign đang được video sử dụng: config cũ có thể chứa tag không
     // nằm trong APP_CONFIG.campaigns — nếu bỏ qua, card sẽ hiện "Luôn chạy" trong
@@ -1296,14 +1355,23 @@ async function saveToGitHub() {
   toast('Đang cập nhật GitHub...','info');
   try {
     const cur = await apiFetch('config');
+    // Dựng một lần rồi dùng lại: gọi buildConfigJs() lần nữa sẽ sinh con dấu khác với
+    // con dấu vừa đẩy lên GitHub, làm lần Lưu sau tưởng nhầm admin lại đổi nguồn phát.
+    const payload = buildConfigJs();
     await apiFetch('config', {
       method:'PUT',
-      body: JSON.stringify({ content: buildConfigJs(), sha: cur.sha }),
+      body: JSON.stringify({ content: payload, sha: cur.sha }),
     });
     // Ghi changelog
     const changes = buildChangelogDiff();
     if (changes.length) await appendChangelog(changes);
     snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
+    // Con dấu vừa ghi lên GitHub trở thành con dấu hiện hành — nếu không cập nhật ở
+    // đây thì lần bấm Lưu kế tiếp (dù chỉ sửa playlist) lại đẩy con dấu mới và quét
+    // sạch chỉnh tay của cả dàn máy.
+    loadedSourceMode   = document.getElementById('cfg-source').value;
+    loadedSourceStamp  = parseAppConfig(payload)?.sourceModeStamp || 0;
+    forceSourceReapply = false;
     markDirty(false);
     toast('Đã lưu! Cloudflare Pages cập nhật sau ~30 giây.','success');
     loadChangelog();

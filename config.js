@@ -20,6 +20,14 @@ const APP_CONFIG = {
   syncIntervalMinutes: 5,
   showStatusBar: true,
   errorSkipDelay: 2000,
-  letterboxColor: '#d11423',
+  letterboxColor: '#df092d',
+  offlineResetMinutes: 5,
+  sourceMode: 'online',
+  sourceModeStamp: 0,
+  // Video app tải về để phát khi mất mạng. Đổi tên file ở đây là các máy tự tải bản
+  // mới — không phải build app và bắn MDM lại. Để trống thì máy dùng video nhúng
+  // sẵn trong app. Chỉ nhận đường dẫn trên chính tên miền này.
+  offlineVideoPortrait: 'videos/offline-portrait-v1.mp4',
+  offlineVideoLandscape: 'videos/offline-landscape-v1.mp4',
   campaigns: ['scamp', 'trade', 'quockhanh'],
 };

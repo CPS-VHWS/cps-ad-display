@@ -1,3 +1,10 @@
+# config.js phải luôn tươi: thẻ <script src="config.js"> không có cache-buster,
+# WebView Android có thể phục vụ lại bản cũ trong cache dù đã tắt/mở lại app
+# → máy hiển thị playlist cũ sau khi admin đổi video. no-store loại bỏ hẳn khả năng đó.
+# File chỉ ~1.3KB nên không đáng kể về băng thông.
+/config.js
+  Cache-Control: no-store
+
 /*
   Service-Worker-Allowed: /
   X-Frame-Options: DENY
