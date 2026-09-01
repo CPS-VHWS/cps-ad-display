@@ -17,7 +17,7 @@ const PLAYLIST_PORTRAIT = [
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 8,
+  syncIntervalMinutes: 5,
   showStatusBar: true,
   errorSkipDelay: 2000,
   letterboxColor: '#d11423',
