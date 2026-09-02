@@ -16,6 +16,17 @@ const PLAYLIST_PORTRAIT = [
   { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade', aspect: '9:16' }
 ];
 
+// ── Playlist OFFLINE: file trong kho R2, máy tải sẵn về để phát khi mất mạng ──
+// Phát lần lượt theo đúng thứ tự dưới đây; tới mốc reset thì mọi máy quay về mục đầu.
+const PLAYLIST_OFFLINE_LANDSCAPE = [
+  { file: 'Laptop.mp4', tag: '"3deb9d6dba8d74462eee223501c4fead"', label: 'Laptop' }
+];
+
+const PLAYLIST_OFFLINE_PORTRAIT = [
+  { file: 'DT.mp4', tag: '"0e98b3d1d5ed9b8e06e866ee424eb005"', label: 'DT' },
+  { file: 'Dt_Update.mp4', tag: '"be51b13412e21edcbaf4f3956a49a720"', label: 'Dt_Update' }
+];
+
 const APP_CONFIG = {
   syncIntervalMinutes: 5,
   showStatusBar: true,
