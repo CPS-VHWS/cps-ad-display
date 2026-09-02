@@ -26,8 +26,6 @@ const PLAYLIST_OFFLINE_LANDSCAPE = [
 ];
 
 const PLAYLIST_OFFLINE_PORTRAIT = [
-  { file: 'Dt_Update.mp4', tag: '"be51b13412e21edcbaf4f3956a49a720"', label: 'Dt_Update', regions: [], campaigns: ['quockhanh'] },
-  { file: 'DT.mp4', tag: '"0e98b3d1d5ed9b8e06e866ee424eb005"', label: 'DT' },
   { file: 'Phu_kien_master_doc_fix.mp4', tag: '"11c2e9e4aa174b4d113d79d85e60cdfc"', label: 'Phu_kien_master_doc_fix', campaigns: ['trade'] },
   { file: 'Laptop_Master_doc_fix.mp4', tag: '"293cdb1a22c14809e340f368e0114d5b"', label: 'Laptop_Master_doc_fix', campaigns: ['trade'] },
   { file: 'Dien_thoai_master_doc_fix.mp4', tag: '"e29c04f75019c495bacef95fe44fd6e9"', label: 'Dien_thoai_master_doc_fix', campaigns: ['trade'] }
