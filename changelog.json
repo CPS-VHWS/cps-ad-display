@@ -1,5 +1,14 @@
 [
   {
+    "ts": 1788368886885,
+    "changes": [
+      "Portrait +Added \"LÊN ĐỜI SMARTPHONE\" (YouTube) at #3",
+      "Portrait +Added \"MUA LAPTOP TẶNG BALO\" (YouTube) at #4",
+      "Portrait +Added \"TRANG BỊ \"TẬN RĂNG\" CHO NĂM HỌC MỚI\" (YouTube) at #5",
+      "Portrait ~Campaign \"Video Camp 2/9\": trade -> off"
+    ]
+  },
+  {
     "ts": 1788367273177,
     "changes": [
       "Landscape ~Regions \"Video Camp 2/9\": All -> None",
