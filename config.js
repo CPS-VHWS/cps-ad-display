@@ -31,11 +31,11 @@ const PLAYLIST_OFFLINE_PORTRAIT = [
 ];
 
 const APP_CONFIG = {
-  syncIntervalMinutes: 5,
+  syncIntervalMinutes: 10,
   showStatusBar: true,
   errorSkipDelay: 2000,
   letterboxColor: '#df092d',
-  offlineResetMinutes: 5,
+  offlineResetMinutes: 30,
   sourceMode: 'offline',
   sourceModeStamp: 1788367179317,
   offlineVideoPortrait: 'media/Dt_Update.mp4',
