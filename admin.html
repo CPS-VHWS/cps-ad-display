@@ -1993,7 +1993,14 @@ async function loadDevices() {
  */
 function videoTagStyle(tag) {
   if (!tag) return 'color:var(--muted);';
-  return /(^|-)0(-|$)/.test(tag) ? 'color:var(--danger);' : 'color:var(--muted);';
+  // Máy báo về dạng "<đã tải>.<cần có>-<đã tải>.<cần có>" (dọc-ngang), vd "3.3-2.3".
+  // Tô đỏ khi bất kỳ chiều nào chưa tải đủ. Luật cũ dò chuỗi "0" nên với định dạng
+  // này nó không bắt được gì — máy thiếu video vẫn hiện xám như bình thường.
+  const thieu = tag.split('-').some(p => {
+    const [have, want] = p.split('.').map(Number);
+    return Number.isFinite(have) && Number.isFinite(want) && have < want;
+  });
+  return thieu ? 'color:var(--danger);' : 'color:var(--muted);';
 }
 
 function renderDeviceList() {

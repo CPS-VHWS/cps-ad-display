@@ -58,7 +58,7 @@ function startHeartbeat(info) {
 
   // Dấu vân tay video offline máy đang giữ, dạng "<dọc>-<ngang>" ("0" = chưa tải được).
   // Đi ké User-Agent như hai cái trên nên không tốn thêm lượt gọi mạng nào.
-  const vidMatch = navigator.userAgent.match(/CPSVideo\/([\w-]+)/);
+  const vidMatch = navigator.userAgent.match(/CPSVideo\/([\w.-]+)/);
   const videoTag = vidMatch ? vidMatch[1] : null;
 
   // Lỗi gần nhất (nếu có) trong phiên hiện tại — chỉ báo nếu xảy ra trong 1 giờ gần đây,
