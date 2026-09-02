@@ -479,6 +479,9 @@ let playlists         = { landscape:[], portrait:[] };
 //  - campaign/regions: lọc y hệt playlist online, đổi camp là offline đổi theo
 let offlinePlaylists  = { landscape:[], portrait:[] };
 let offlineTab        = 'landscape';
+// Tên file đang thật sự có trong kho R2 (null = chưa hỏi kho lần nào).
+// Dùng để phát hiện mục playlist trỏ tới file đã bị xoá.
+let _r2Files          = null;
 let snapshotPlaylists = null; // bản copy lúc load từ GitHub, dùng để tính diff
 let activeTab    = 'landscape';
 let dirty        = false;
@@ -1299,7 +1302,10 @@ function buildConfigJs() {
       const isAll = v.regions.length === 2 && v.regions.includes('mn') && v.regions.includes('mb');
       if (!isAll) parts.push(`regions: [${v.regions.map(r => `'${esc(r)}'`).join(', ')}]`);
     }
-    if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
+    // Nhiều chương trình cho một video: ghi mảng. Không tích cái nào thì không ghi
+    // trường này — nghĩa là luôn chạy, giống luật bên online.
+    const cs = offCamps(v);
+    if (cs.length) parts.push(`campaigns: [${cs.map(c => `'${esc(c)}'`).join(', ')}]`);
     return `  { ${parts.join(', ')} }`;
   }
   const ols = offlinePlaylists.landscape.map(offRow).join(',\n') || '  // trống';
@@ -1440,6 +1446,58 @@ function switchOfflineTab(tab) {
   renderOffline();
 }
 
+/**
+ * Danh sách chương trình của một mục, luôn trả về mảng.
+ *
+ * Chấp nhận cả dữ liệu cũ dạng `campaign: 'trade'` (một chương trình) lẫn dạng mới
+ * `campaigns: ['trade','b2s']` — config đã lưu trước khi đổi vẫn đọc được, khỏi phải
+ * sửa tay từng mục.
+ */
+function offCamps(v) {
+  if (Array.isArray(v.campaigns)) return v.campaigns;
+  if (v.campaign) return [v.campaign];
+  return [];
+}
+
+/**
+ * Dãy ô tích chương trình. Một video chạy được nhiều chương trình cùng lúc, nên
+ * dùng ô tích chứ không phải ô chọn một.
+ */
+function campaignChips(current, onChange) {
+  const box = document.createElement('span');
+  box.style.cssText = 'display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;';
+  const list = getCampaignList();
+  if (!list.length) {
+    const s = document.createElement('span');
+    s.style.color = 'var(--muted)';
+    s.textContent = 'chưa có chương trình nào';
+    box.appendChild(s);
+    return box;
+  }
+  for (const c of list) {
+    const l = document.createElement('label');
+    l.style.cssText = 'display:inline-flex;align-items:center;gap:3px;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = current.includes(c);
+    cb.onchange = () => {
+      const next = cb.checked
+        ? [...new Set([...current, c])]
+        : current.filter(x => x !== c);
+      onChange(next);
+    };
+    l.appendChild(cb);
+    l.appendChild(document.createTextNode(c));
+    box.appendChild(l);
+  }
+  // Không tích cái nào = luôn chạy, giống hệt luật bên online với video không gắn campaign
+  const hint = document.createElement('span');
+  hint.style.color = 'var(--muted)';
+  hint.textContent = current.length ? '' : '(không tích = luôn chạy)';
+  box.appendChild(hint);
+  return box;
+}
+
 /** Mục playlist ứng với file này, ở bất kỳ chiều nào. */
 function offlineItemOf(file) {
   for (const t of ['portrait', 'landscape']) {
@@ -1460,6 +1518,9 @@ function updateOfflineByFile(file, field, value) {
   if (!it) return;
   if (field === 'regions') {
     it.regions = (value && value.length === 2) ? undefined : value;
+  } else if (field === 'campaigns') {
+    it.campaigns = value;
+    delete it.campaign;   // dọn dạng cũ, tránh hai chỗ cùng khai rồi lệch nhau
   } else {
     it[field] = value;
   }
@@ -1554,6 +1615,18 @@ function fmtDur(sec) {
   return s >= 60 ? `${Math.floor(s / 60)}p${String(s % 60).padStart(2, '0')}s` : `${s}s`;
 }
 
+/** Bật/tắt một chương trình cho mục thứ [i] trong khối Playlist Offline. */
+function toggleOfflineCampaign(tab, i, camp, on) {
+  const v = offlinePlaylists[tab][i];
+  if (!v) return;
+  const cur = offCamps(v);
+  v.campaigns = on ? [...new Set([...cur, camp])] : cur.filter(c => c !== camp);
+  delete v.campaign;   // dọn dạng cũ, tránh hai chỗ cùng khai rồi lệch nhau
+  markDirty(true);
+  renderOffline();
+  listVideos();
+}
+
 function applyOfflineReset(min) {
   document.getElementById('cfg-offline-reset').value = String(min);
   markDirty(true);
@@ -1583,7 +1656,9 @@ function renderOffline() {
   const isFiltered = !!(fR || fC);
   const view = pl.map((v, i) => ({ v, i })).filter(({ v }) => {
     if (fR && v.regions !== undefined && (v.regions.length === 0 || !v.regions.includes(fR))) return false;
-    if (fC && v.campaign && v.campaign !== fC) return false;
+    // Không gắn chương trình nào = luôn chạy; gắn nhiều thì khớp một cái là đủ
+    const cs = offCamps(v);
+    if (fC && cs.length && !cs.includes(fC)) return false;
     return true;
   });
   document.getElementById('off-filter-info').textContent =
@@ -1601,7 +1676,17 @@ function renderOffline() {
       const mnChk = !v.regions || v.regions.includes('mn') ? 'checked' : '';
       const mbChk = !v.regions || v.regions.includes('mb') ? 'checked' : '';
       const noReg = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
-      const campOpts = campList.map(c => `<option value="${escHtml(c)}"${v.campaign === c ? ' selected' : ''}>${escHtml(c)}</option>`).join('');
+      // Ô tích nhiều chương trình: một video chạy được cho nhiều camp cùng lúc
+      const cur = offCamps(v);
+      const campBoxes = campList.length
+        ? campList.map(c => `<label style="display:inline-flex;align-items:center;gap:3px;cursor:pointer;">
+            <input type="checkbox" ${cur.includes(c) ? 'checked' : ''}
+              onchange="toggleOfflineCampaign('${offlineTab}',${i},'${escHtml(c)}',this.checked)"> ${escHtml(c)}</label>`).join('')
+        : '<span style="color:var(--muted);">chưa có chương trình nào</span>';
+      const campHint = cur.length ? '' : '<span style="color:var(--muted);">(không tích = luôn chạy)</span>';
+      // File bị xoá khỏi kho nhưng còn nằm trong playlist → máy tải thất bại trong im lặng
+      const missing = (_r2Files && !_r2Files.has(v.file))
+        ? '<span class="region-none">⚠ File không còn trong kho — máy sẽ không tải được</span>' : '';
       return `<div class="video-card"
           draggable="${!isFiltered}"
           ondragstart="${!isFiltered ? `onOffDragStart('${offlineTab}',${i},event)` : ''}"
@@ -1615,14 +1700,14 @@ function renderOffline() {
           <input class="edit-label" type="text" value="${escHtml(v.label || '')}" placeholder="Tên hiện trên màn hình"
             title="Tên này hiện ở góc dưới màn hình khi phát"
             onchange="updateOfflineField('${offlineTab}',${i},'label',this.value)">
-          <div style="font-size:11px;color:var(--muted);margin:2px 0 4px;">${escHtml(v.file)}</div>
+          <div style="font-size:11px;color:var(--muted);margin:2px 0 4px;">${escHtml(v.file)} ${missing}</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;">
             <label><input type="checkbox" ${mnChk} onchange="updateOfflineField('${offlineTab}',${i},'regions',[...(this.checked?['mn']:[]),...(this.parentElement.nextElementSibling.firstElementChild.checked?['mb']:[])])"> MN</label>
             <label><input type="checkbox" ${mbChk} onchange="updateOfflineField('${offlineTab}',${i},'regions',[...(this.parentElement.previousElementSibling.firstElementChild.checked?['mn']:[]),...(this.checked?['mb']:[])])"> MB</label>
-            <select onchange="updateOfflineField('${offlineTab}',${i},'campaign',this.value)" style="font-size:12px;">
-              <option value="">— Luôn chạy</option>${campOpts}
-            </select>
             ${noReg}
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;margin-top:4px;">
+            <span style="color:var(--muted);">Chương trình:</span>${campBoxes}${campHint}
           </div>
         </div>
         <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger);"
@@ -1659,13 +1744,26 @@ function renderOffline() {
 }
 
 async function deleteVideo(name) {
-  const inUse = ['cfg-video-portrait', 'cfg-video-landscape']
-    .map(id => document.getElementById(id).value.trim().replace(/^\//, ''))
-    .filter(v => v && v.endsWith('/' + name));
-  if (inUse.length) {
-    toast(`Không xoá được: config đang trỏ tới "${name}". Đổi sang video khác và bấm Lưu trước đã.`, 'error');
+  // Chặn theo PLAYLIST, không theo hai ô cũ.
+  //
+  // Trước đây chốt này soi hai ô "Video offline — màn dọc/ngang" kiểu cũ, mà app 1.2.0
+  // không còn đọc chúng nữa. Hậu quả thật: file nằm trong playlist nhưng không nằm ở ô
+  // cũ thì xoá lọt, để lại một mục trỏ tới file đã mất — máy tải thất bại trong im lặng.
+  const slot = offlineSlotOf(name);
+  if (slot) {
+    toast(`Không xoá được: "${name}" đang nằm trong playlist ${slot === 'portrait' ? 'Dọc' : 'Ngang'}. ` +
+          `Bấm "Gỡ" ở khối Playlist Offline rồi Lưu, sau đó mới xoá được.`, 'error');
     return;
   }
+  // Hai ô cũ vẫn phải kiểm: máy còn chạy app 1.1.x vẫn đọc chúng cho tới khi lên hết 1.2.0
+  const oldRef = ['cfg-video-portrait', 'cfg-video-landscape']
+    .map(id => document.getElementById(id).value.trim().replace(/^\//, ''))
+    .filter(v => v && v.endsWith('/' + name));
+  if (oldRef.length && !confirm(
+    `"${name}" không nằm trong playlist, nhưng hai ô cũ vẫn trỏ tới nó.\n\n` +
+    `Máy còn chạy app 1.1.x đọc hai ô đó. Nếu cả dàn máy đã lên 1.2.0 thì xoá thoải mái.\n\n` +
+    `Vẫn xoá?`
+  )) return;
   if (!confirm(
     `Xoá vĩnh viễn "${name}" khỏi kho?\n\n` +
     `Máy đã tải file này về rồi thì vẫn phát bình thường (chúng giữ bản sao riêng).\n` +
@@ -1687,6 +1785,11 @@ async function listVideos() {
   el.textContent = 'Đang tải danh sách…';
   try {
     const data = await apiFetch('video');
+    // Nhớ lại tên file đang có trong kho, để khối Playlist Offline chỉ ra được mục nào
+    // trỏ tới file đã bị xoá — không có chỗ này thì mục chết nằm im, máy tải thất bại
+    // trong im lặng mà chẳng ai hay.
+    _r2Files = new Set(data.videos.map(v => v.name));
+    renderOffline();
     if (!data.videos.length) { el.textContent = 'Kho R2 chưa có video nào.'; return; }
     el.innerHTML = '';
     for (const v of data.videos) {
@@ -1741,12 +1844,8 @@ async function listVideos() {
           w.className = 'region-none'; w.textContent = '⚠ Không chạy ở đâu';
           box.appendChild(w);
         }
-        const sel = document.createElement('select');
-        sel.style.cssText = 'font-size:12px;width:auto;padding:4px 8px;';
-        sel.innerHTML = `<option value="">— Luôn chạy</option>` +
-          getCampaignList().map(c => `<option value="${escHtml(c)}"${it.campaign === c ? ' selected' : ''}>${escHtml(c)}</option>`).join('');
-        sel.onchange = () => updateOfflineByFile(v.name, 'campaign', sel.value);
-        box.appendChild(sel);
+        box.appendChild(campaignChips(offCamps(it), next =>
+          updateOfflineByFile(v.name, 'campaigns', next)));
         row.appendChild(box);
       }
 
