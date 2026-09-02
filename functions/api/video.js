@@ -19,7 +19,7 @@ const MAX_BYTES = 60 * 1024 * 1024;
 
 // Chỉ nhận tên file phẳng, không dấu, không thư mục con. Chặn luôn khả năng
 // đặt tên kiểu "../config.js" để ghi đè chỗ khác.
-const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.mp4$/i;
+const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}\.mp4$/i;
 
 function noBucket() {
   return jsonResponse({

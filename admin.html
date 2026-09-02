@@ -379,7 +379,7 @@
     <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;">
       <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Tải video lên</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <input id="vid-file" type="file" accept="video/mp4" style="font-size:12px;max-width:100%;">
+        <input id="vid-file" type="file" accept="video/mp4,.mp4" style="font-size:12px;max-width:100%;">
         <button class="btn btn-secondary btn-sm" id="btn-vid-upload" onclick="uploadVideo()">↑ Tải lên</button>
         <button class="btn btn-secondary btn-sm" onclick="listVideos()">⟳ Xem file đã có</button>
       </div>
@@ -1419,7 +1419,10 @@ async function uploadVideo() {
   const btn = document.getElementById('btn-vid-upload');
   const file = input.files && input.files[0];
   if (!file) { toast('Chưa chọn file video.', 'error'); return; }
-  if (!/\.mp4$/i.test(file.name)) { toast('Chỉ nhận file .mp4', 'error'); return; }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}\.mp4$/i.test(file.name)) {
+    toast('Tên file chỉ được dùng chữ không dấu, số, khoảng trắng, dấu chấm/gạch — và phải kết thúc bằng .mp4. Hiện tại: ' + file.name, 'error');
+    return;
+  }
 
   const mb = (file.size / 1048576).toFixed(1);
   btn.disabled = true;

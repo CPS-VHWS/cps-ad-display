@@ -10,7 +10,7 @@
 //  35MB mỗi tiếng dù chẳng có gì mới.
 // ═══════════════════════════════════════════════════════════════
 
-const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.mp4$/i;
+const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}\.mp4$/i;
 
 export async function onRequest({ request, params, env }) {
   const method = request.method.toUpperCase();
