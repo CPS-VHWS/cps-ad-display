@@ -1,5 +1,12 @@
 [
   {
+    "ts": 1788367273177,
+    "changes": [
+      "Landscape ~Regions \"Video Camp 2/9\": All -> None",
+      "Landscape ~Campaign \"Video Camp 2/9\": trade -> off"
+    ]
+  },
+  {
     "ts": 1787925156561,
     "changes": [
       "Portrait -Removed \"Video Camp 2/9 - Drive\" (was #3)"
