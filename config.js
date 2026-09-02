@@ -8,7 +8,7 @@ const PLAYLIST_LANDSCAPE = [
   { id: 'aCJFpFS6OPE', duration: 31, label: 'Lên đời smartphone mới', campaign: 'trade' },
   { id: 'Javr2nYWOxI', duration: 37, label: 'Mua Laptop tặng balo', campaign: 'trade', aspect: '16:9' },
   { id: 'uu_52j5NxG8', duration: 30, label: 'Bộ phụ kiện GenZ & Quà Limited 2026', campaign: 'trade', aspect: '16:9' },
-  { id: 'YChx41iM5Bw', duration: 15, label: 'Video Camp 2/9', campaign: 'trade', aspect: '9:16' }
+  { id: 'YChx41iM5Bw', duration: 15, label: 'Video Camp 2/9', regions: [], campaign: 'off', aspect: '9:16' }
 ];
 
 const PLAYLIST_PORTRAIT = [
