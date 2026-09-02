@@ -343,6 +343,24 @@
         <input id="cfg-video-landscape" type="text" placeholder="videos/offline-landscape-v1.mp4" oninput="markDirty(true)"></div>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">Video offline: app tự tải về máy và phát khi mất mạng. <b>Đổi video thì đặt tên file MỚI</b> (vd đổi -v1 thành -v2) rồi sửa ô này — máy so tên và dấu vân tay file để biết có bản mới. Để trống thì máy dùng video nhúng sẵn trong app. Chỉ nhận đường dẫn trên chính tên miền này.</div>
+
+    <!-- Upload video thẳng lên R2 -->
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Tải video lên</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input id="vid-file" type="file" accept="video/mp4" style="font-size:12px;max-width:100%;">
+        <button class="btn btn-secondary btn-sm" id="btn-vid-upload" onclick="uploadVideo()">↑ Tải lên</button>
+        <button class="btn btn-secondary btn-sm" onclick="listVideos()">⟳ Xem file đã có</button>
+      </div>
+      <div id="vid-progress" style="font-size:11px;color:var(--muted);margin-top:8px;"></div>
+      <div id="vid-list" style="font-size:12px;margin-top:8px;"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+        File lên thẳng kho R2, <b>không qua GitHub</b> nên không làm phình repo. Tên file
+        giữ nguyên như trên máy ông — <b>đặt tên mới mỗi lần đổi video</b> để tránh bộ đệm
+        giữ bản cũ, và để còn đường quay lại bản trước. Tải xong bấm "Dùng cho Dọc/Ngang"
+        rồi <b>vẫn phải bấm Lưu</b> thì các máy mới nhận.
+      </div>
+    </div>
     <div style="margin-top:8px;">
       <button class="btn btn-secondary btn-sm" onclick="forceSourceReapply=true;markDirty(true);toast('Sẽ áp lại nguồn phát cho toàn bộ máy khi bấm Lưu.','info')">⟳ Áp lại nguồn phát cho toàn bộ máy</button>
     </div>
@@ -1291,6 +1309,81 @@ async function apiFetch(resource, opts={}) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
   return data;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VIDEO OFFLINE — upload thẳng lên R2
+//  Không dùng apiFetch: hàm đó ép Content-Type: application/json, còn đây gửi
+//  nguyên file nhị phân. Cũng không đọc file vào bộ nhớ — đưa thẳng đối tượng
+//  File cho fetch, trình duyệt tự truyền theo luồng.
+// ═══════════════════════════════════════════════════════════════
+function adminKey() {
+  const key = document.getElementById('gh-token').value.trim();
+  if (!key) throw new Error('Chưa nhập Admin API Key');
+  return key;
+}
+
+async function uploadVideo() {
+  const input = document.getElementById('vid-file');
+  const prog = document.getElementById('vid-progress');
+  const btn = document.getElementById('btn-vid-upload');
+  const file = input.files && input.files[0];
+  if (!file) { toast('Chưa chọn file video.', 'error'); return; }
+  if (!/\.mp4$/i.test(file.name)) { toast('Chỉ nhận file .mp4', 'error'); return; }
+
+  const mb = (file.size / 1048576).toFixed(1);
+  btn.disabled = true;
+  prog.textContent = `Đang tải lên ${file.name} (${mb} MB)… đừng đóng trang.`;
+  try {
+    const res = await fetch(`/api/video?name=${encodeURIComponent(file.name)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminKey()}` },
+      body: file,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    prog.textContent = `✅ Xong: ${data.name} (${(data.size / 1048576).toFixed(1)} MB) → ${data.url}`;
+    toast('Tải video lên xong.', 'success');
+    listVideos();
+  } catch (e) {
+    prog.textContent = `❌ ${e.message}`;
+    toast('Lỗi: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function listVideos() {
+  const el = document.getElementById('vid-list');
+  el.textContent = 'Đang tải danh sách…';
+  try {
+    const data = await apiFetch('video');
+    if (!data.videos.length) { el.textContent = 'Kho R2 chưa có video nào.'; return; }
+    el.innerHTML = '';
+    for (const v of data.videos) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;';
+      const label = document.createElement('span');
+      label.textContent = `${v.name} · ${(v.size / 1048576).toFixed(1)} MB`;
+      label.style.flex = '1';
+      row.appendChild(label);
+      for (const [text, id] of [['Dùng cho Dọc', 'cfg-video-portrait'], ['Dùng cho Ngang', 'cfg-video-landscape']]) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-secondary btn-sm';
+        b.textContent = text;
+        b.onclick = () => {
+          // Bỏ dấu / đầu: ô cấu hình dùng đường dẫn tương đối, app tự ghép tên miền
+          document.getElementById(id).value = v.url.replace(/^\//, '');
+          markDirty(true);
+          toast('Đã điền. Nhớ bấm Lưu để các máy nhận.', 'info');
+        };
+        row.appendChild(b);
+      }
+      el.appendChild(row);
+    }
+  } catch (e) {
+    el.textContent = '❌ ' + e.message;
+  }
 }
 
 async function loadFromGitHub() {
