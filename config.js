@@ -24,10 +24,7 @@ const APP_CONFIG = {
   offlineResetMinutes: 5,
   sourceMode: 'online',
   sourceModeStamp: 0,
-  // Video app tải về để phát khi mất mạng. Đổi tên file ở đây là các máy tự tải bản
-  // mới — không phải build app và bắn MDM lại. Để trống thì máy dùng video nhúng
-  // sẵn trong app. Chỉ nhận đường dẫn trên chính tên miền này.
-  offlineVideoPortrait: 'videos/offline-portrait-v1.mp4',
-  offlineVideoLandscape: 'videos/offline-landscape-v1.mp4',
+  offlineVideoPortrait: 'media/DT.mp4',
+  offlineVideoLandscape: 'media/Laptop.mp4',
   campaigns: ['scamp', 'trade', 'quockhanh'],
 };
