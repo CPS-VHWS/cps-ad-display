@@ -317,6 +317,33 @@
   </div>
 
   <!-- App settings -->
+  <!-- ══ PLAYLIST OFFLINE — video nằm trong máy, phát khi mất mạng ══ -->
+  <h2 style="cursor:pointer;user-select:none;" onclick="toggleSection('off')"><span id="off-caret">▸</span> Playlist Offline <span class="tab-badge" id="off-total-badge">—</span></h2>
+  <div id="off-body" style="display:none;">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      Video tải sẵn vào máy, phát khi mất mạng. Mỗi file chỉ thuộc <b>một chiều</b>;
+      một chiều chứa được nhiều video, phát lần lượt theo thứ tự dưới đây.
+      Lọc theo chương trình và khu vực giống hệt playlist online.
+    </div>
+
+    <div class="tabs" style="display:flex;gap:8px;margin-bottom:12px;">
+      <div class="tab active-landscape" id="off-tab-landscape" onclick="switchOfflineTab('landscape')">▬ Ngang <span class="tab-badge" id="off-badge-landscape">0</span></div>
+      <div class="tab" id="off-tab-portrait" onclick="switchOfflineTab('portrait')">▮ Dọc <span class="tab-badge" id="off-badge-portrait">0</span></div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:12px;">
+      <span style="color:var(--muted);">Xem trước máy sẽ phát gì:</span>
+      <select id="off-filter-region" onchange="renderOffline()" style="font-size:12px;">
+        <option value="">Mọi khu vực</option><option value="mn">MN</option><option value="mb">MB</option>
+      </select>
+      <select id="off-filter-campaign" onchange="renderOffline()" style="font-size:12px;"></select>
+      <span id="off-filter-info" style="color:var(--muted);"></span>
+    </div>
+
+    <div id="off-playlist-container"></div>
+    <div id="off-duration-info" style="font-size:12px;margin-top:10px;"></div>
+  </div>
+
   <h2>Cài đặt app</h2>
   <div class="panel" style="margin-bottom:20px;">
     <div class="config-row">
@@ -443,6 +470,15 @@
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let playlists         = { landscape:[], portrait:[] };
+
+// Playlist OFFLINE — video nằm trong máy, phát khi mất mạng. Tách hẳn khỏi playlist
+// online vì hai bên khác bản chất: online là mã YouTube, offline là file trong kho R2.
+// Mỗi mục: { file, tag, label, campaign, regions }
+//  - file    : tên file trong kho R2 (máy tải về theo tên này, đổi thứ tự KHÔNG phải tải lại)
+//  - tag     : dấu vân tay ETag, để máy biết file có đổi nội dung không
+//  - campaign/regions: lọc y hệt playlist online, đổi camp là offline đổi theo
+let offlinePlaylists  = { landscape:[], portrait:[] };
+let offlineTab        = 'landscape';
 let snapshotPlaylists = null; // bản copy lúc load từ GitHub, dùng để tính diff
 let activeTab    = 'landscape';
 let dirty        = false;
@@ -1255,6 +1291,20 @@ function buildConfigJs() {
   const ls = playlists.landscape.map(row).join(',\n') || '  // trống';
   const ps = playlists.portrait.map(row).join(',\n')  || '  // trống';
 
+  // Mục playlist offline. Không có duration: app tự đọc độ dài từ chính file,
+  // khác online phải gõ tay vì trình duyệt không đọc được độ dài video YouTube.
+  function offRow(v) {
+    const parts = [`file: '${esc(v.file)}'`, `tag: '${esc(v.tag || '')}'`, `label: '${esc(v.label || '')}'`];
+    if (v.regions !== undefined) {
+      const isAll = v.regions.length === 2 && v.regions.includes('mn') && v.regions.includes('mb');
+      if (!isAll) parts.push(`regions: [${v.regions.map(r => `'${esc(r)}'`).join(', ')}]`);
+    }
+    if (v.campaign) parts.push(`campaign: '${esc(v.campaign)}'`);
+    return `  { ${parts.join(', ')} }`;
+  }
+  const ols = offlinePlaylists.landscape.map(offRow).join(',\n') || '  // trống';
+  const ops = offlinePlaylists.portrait.map(offRow).join(',\n')  || '  // trống';
+
   return `// ═══════════════════════════════════════════════════════════════
 //  PLAYLIST CONFIG — quản lý qua Admin Dashboard
 //  https://${owner}.github.io/${repo}/admin.html
@@ -1266,6 +1316,16 @@ ${ls}
 
 const PLAYLIST_PORTRAIT = [
 ${ps}
+];
+
+// ── Playlist OFFLINE: file trong kho R2, máy tải sẵn về để phát khi mất mạng ──
+// Phát lần lượt theo đúng thứ tự dưới đây; tới mốc reset thì mọi máy quay về mục đầu.
+const PLAYLIST_OFFLINE_LANDSCAPE = [
+${ols}
+];
+
+const PLAYLIST_OFFLINE_PORTRAIT = [
+${ops}
 ];
 
 const APP_CONFIG = {
@@ -1369,6 +1429,207 @@ async function uploadVideo() {
  *    và máy mới cài thì không bao giờ có video offline.
  * 2. Xoá nhầm do bấm vội — bắt xác nhận, có nêu rõ tên file.
  */
+// ═══════════════════════════════════════════════════════════════
+//  PLAYLIST OFFLINE
+// ═══════════════════════════════════════════════════════════════
+function switchOfflineTab(tab) {
+  offlineTab = tab;
+  for (const t of ['landscape', 'portrait']) {
+    document.getElementById('off-tab-' + t).classList.toggle('active-landscape', t === tab);
+  }
+  renderOffline();
+}
+
+/** Video này đang nằm ở chiều nào — dùng để tích sẵn ô trong danh sách kho. */
+function offlineSlotOf(file) {
+  if (offlinePlaylists.portrait.some(v => v.file === file)) return 'portrait';
+  if (offlinePlaylists.landscape.some(v => v.file === file)) return 'landscape';
+  return '';
+}
+
+/**
+ * Gán video vào một chiều (hoặc bỏ ra khi slot rỗng).
+ *
+ * Một file chỉ thuộc một chiều: gán sang chiều mới thì tự gỡ khỏi chiều cũ, không
+ * để cùng một file nằm ở cả hai bên rồi máy dọc lẫn máy ngang cùng phát một video.
+ */
+function setOfflineSlot(file, tag, slot) {
+  for (const t of ['portrait', 'landscape']) {
+    offlinePlaylists[t] = offlinePlaylists[t].filter(v => v.file !== file);
+  }
+  if (slot) {
+    // Thêm vào cuối danh sách; muốn đổi thứ tự thì kéo thả ở khối Playlist Offline
+    offlinePlaylists[slot].push({
+      file, tag: tag || '',
+      label: file.replace(/\.mp4$/i, ''),
+      campaign: '', regions: undefined,
+    });
+    offlineTab = slot;
+  }
+  markDirty(true);
+  renderOffline();
+  listVideos();
+}
+
+function updateOfflineField(tab, i, field, value) {
+  const v = offlinePlaylists[tab][i];
+  if (!v) return;
+  if (field === 'regions') {
+    v.regions = value;
+    if (v.regions && v.regions.length === 2) v.regions = undefined; // cả 2 = không lọc
+  } else {
+    v[field] = value;
+  }
+  markDirty(true);
+  renderOffline();
+}
+
+function removeOffline(tab, i) {
+  offlinePlaylists[tab].splice(i, 1);
+  markDirty(true);
+  renderOffline();
+  listVideos();
+}
+
+let offDragSrc = null;
+function onOffDragStart(tab, i, e) { offDragSrc = { tab, i }; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); }
+function onOffDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onOffDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onOffDragEnd(e) { e.currentTarget.classList.remove('dragging'); offDragSrc = null; }
+function onOffDrop(tab, i, e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!offDragSrc || offDragSrc.tab !== tab || offDragSrc.i === i) return;
+  const item = offlinePlaylists[tab].splice(offDragSrc.i, 1)[0];
+  offlinePlaylists[tab].splice(i, 0, item);
+  offDragSrc = null;
+  markDirty(true);
+  renderOffline();
+}
+
+// Thời lượng đọc thẳng từ file, nhớ lại để khỏi tải đi tải lại mỗi lần vẽ.
+// Trình duyệt chỉ tải phần đầu file (preload=metadata) chứ không tải cả 28MB.
+const _offDur = {};
+function fetchOfflineDuration(file) {
+  if (_offDur[file] !== undefined) return;
+  _offDur[file] = null; // đánh dấu đang đọc, tránh gọi trùng
+  const el = document.createElement('video');
+  el.preload = 'metadata';
+  el.onloadedmetadata = () => { _offDur[file] = el.duration || 0; el.src = ''; renderOffline(); };
+  el.onerror = () => { _offDur[file] = 0; };
+  el.src = '/media/' + encodeURIComponent(file);
+}
+
+/** 95 giây → "1p35s". admin.html không có fmtSec (hàm đó nằm ở index.html). */
+function fmtDur(sec) {
+  const s = Math.round(sec || 0);
+  return s >= 60 ? `${Math.floor(s / 60)}p${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+}
+
+function applyOfflineReset(min) {
+  document.getElementById('cfg-offline-reset').value = String(min);
+  markDirty(true);
+  renderOffline();
+  toast(`Đã đặt mốc reset ${min} phút. Nhớ bấm Lưu.`, 'info');
+}
+
+function renderOffline() {
+  const pl  = offlinePlaylists[offlineTab];
+  const con = document.getElementById('off-playlist-container');
+  if (!con) return;
+  document.getElementById('off-badge-landscape').textContent = offlinePlaylists.landscape.length;
+  document.getElementById('off-badge-portrait').textContent  = offlinePlaylists.portrait.length;
+  document.getElementById('off-total-badge').textContent =
+    offlinePlaylists.landscape.length + offlinePlaylists.portrait.length;
+
+  const campList = getCampaignList();
+  const fcEl = document.getElementById('off-filter-campaign');
+  if (fcEl) {
+    const cur = fcEl.value;
+    fcEl.innerHTML = `<option value="">Mọi chương trình</option>` +
+      campList.map(c => `<option value="${escHtml(c)}"${cur === c ? ' selected' : ''}>${escHtml(c)}</option>`).join('');
+  }
+
+  const fR = document.getElementById('off-filter-region')?.value || '';
+  const fC = document.getElementById('off-filter-campaign')?.value || '';
+  const isFiltered = !!(fR || fC);
+  const view = pl.map((v, i) => ({ v, i })).filter(({ v }) => {
+    if (fR && v.regions !== undefined && (v.regions.length === 0 || !v.regions.includes(fR))) return false;
+    if (fC && v.campaign && v.campaign !== fC) return false;
+    return true;
+  });
+  document.getElementById('off-filter-info').textContent =
+    isFiltered ? `→ ${view.length}/${pl.length} video` : '';
+
+  if (!pl.length) {
+    con.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">Chưa có video nào cho chiều này — tích Dọc/Ngang ở khối "Tải video lên" bên dưới.</div>`;
+  } else if (!view.length) {
+    con.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">Không video nào khớp bộ lọc — máy như vậy sẽ không có gì để phát khi mất mạng.</div>`;
+  } else {
+    con.innerHTML = `<div class="playlist-wrap">${view.map(({ v, i }) => {
+      fetchOfflineDuration(v.file);
+      const d = _offDur[v.file];
+      const durTxt = d == null ? "đang đọc…" : d > 0 ? fmtDur(d) : "không đọc được";
+      const mnChk = !v.regions || v.regions.includes('mn') ? 'checked' : '';
+      const mbChk = !v.regions || v.regions.includes('mb') ? 'checked' : '';
+      const noReg = (v.regions && v.regions.length === 0) ? '<span class="region-none">⚠ Không chạy ở đâu</span>' : '';
+      const campOpts = campList.map(c => `<option value="${escHtml(c)}"${v.campaign === c ? ' selected' : ''}>${escHtml(c)}</option>`).join('');
+      return `<div class="video-card"
+          draggable="${!isFiltered}"
+          ondragstart="${!isFiltered ? `onOffDragStart('${offlineTab}',${i},event)` : ''}"
+          ondragover="${!isFiltered ? 'onOffDragOver(event)' : ''}"
+          ondragleave="${!isFiltered ? 'onOffDragLeave(event)' : ''}"
+          ondrop="${!isFiltered ? `onOffDrop('${offlineTab}',${i},event)` : ''}"
+          ondragend="${!isFiltered ? 'onOffDragEnd(event)' : ''}">
+        <div class="drag-handle" title="${isFiltered ? 'Xoá bộ lọc để sắp xếp' : 'Kéo để sắp xếp'}" style="${isFiltered ? 'opacity:.25;cursor:not-allowed;' : ''}">⠿</div>
+        <div class="thumb-ph" style="font-size:11px;">${i + 1}<br><span style="font-size:9px">${escHtml(durTxt)}</span></div>
+        <div class="video-info">
+          <input class="edit-label" type="text" value="${escHtml(v.label || '')}" placeholder="Tên hiện trên màn hình"
+            title="Tên này hiện ở góc dưới màn hình khi phát"
+            onchange="updateOfflineField('${offlineTab}',${i},'label',this.value)">
+          <div style="font-size:11px;color:var(--muted);margin:2px 0 4px;">${escHtml(v.file)}</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;">
+            <label><input type="checkbox" ${mnChk} onchange="updateOfflineField('${offlineTab}',${i},'regions',[...(this.checked?['mn']:[]),...(this.parentElement.nextElementSibling.firstElementChild.checked?['mb']:[])])"> MN</label>
+            <label><input type="checkbox" ${mbChk} onchange="updateOfflineField('${offlineTab}',${i},'regions',[...(this.parentElement.previousElementSibling.firstElementChild.checked?['mn']:[]),...(this.checked?['mb']:[])])"> MB</label>
+            <select onchange="updateOfflineField('${offlineTab}',${i},'campaign',this.value)" style="font-size:12px;">
+              <option value="">— Luôn chạy</option>${campOpts}
+            </select>
+            ${noReg}
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger);"
+          onclick="removeOffline('${offlineTab}',${i})" title="Gỡ khỏi playlist (file vẫn còn trong kho)">Gỡ</button>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  // Tổng thời lượng + cảnh báo mốc reset cắt mất video cuối
+  const known = pl.map(v => _offDur[v.file]).filter(d => d != null && d > 0);
+  const info = document.getElementById('off-duration-info');
+  if (!pl.length || known.length < pl.length) {
+    info.textContent = pl.length ? 'Đang đọc thời lượng…' : '';
+    info.style.color = 'var(--muted)';
+  } else {
+    const total = known.reduce((s, d) => s + d, 0);
+    const resetMin = parseInt(document.getElementById('cfg-offline-reset')?.value) || 5;
+    // Chỉ gợi ý giá trị mà ô "Mốc reset" thật sự có — gợi ý 7 phút mà ô chỉ cho chọn
+    // 5/10 thì gợi ý vô dụng.
+    const opts = [...document.getElementById('cfg-offline-reset').options].map(o => +o.value);
+    const suggest = opts.find(o => o * 60 >= total) || opts[opts.length - 1];
+    const m = Math.floor(total / 60), s = Math.round(total % 60);
+    const sum = `Tổng: ${m}p ${s}s → Gợi ý mốc reset: ${suggest} phút`;
+    // Mốc reset ngắn hơn tổng playlist = mấy video cuối KHÔNG BAO GIỜ tới lượt phát,
+    // mà chẳng có thông báo lỗi nào. Với một video thì không thể xảy ra; có playlist mới có.
+    if (total > resetMin * 60) {
+      info.innerHTML = `<span style="color:var(--danger);">⚠ ${sum} — đang để ${resetMin} phút, ` +
+        `NGẮN HƠN tổng nên mấy video cuối sẽ không bao giờ được phát.</span> ` +
+        `<button class="btn btn-secondary btn-sm" onclick="applyOfflineReset(${suggest})">Đặt ${suggest} phút</button>`;
+    } else {
+      info.innerHTML = `<span style="color:var(--muted);">${sum} · đang để ${resetMin} phút → chạy trọn playlist rồi lặp lại.</span>`;
+    }
+  }
+}
+
 async function deleteVideo(name) {
   const inUse = ['cfg-video-portrait', 'cfg-video-landscape']
     .map(id => document.getElementById(id).value.trim().replace(/^\//, ''))
@@ -1407,22 +1668,20 @@ async function listVideos() {
       label.textContent = `${v.name} · ${(v.size / 1048576).toFixed(1)} MB`;
       label.style.flex = '1';
       row.appendChild(label);
-      for (const [text, id] of [['Dùng cho Dọc', 'cfg-video-portrait'], ['Dùng cho Ngang', 'cfg-video-landscape']]) {
-        const b = document.createElement('button');
-        b.className = 'btn btn-secondary btn-sm';
-        b.textContent = text;
-        b.onclick = () => {
-          // Bỏ dấu / đầu: ô cấu hình dùng đường dẫn tương đối, app tự ghép tên miền
-          document.getElementById(id).value = v.url.replace(/^\//, '');
-          // Ghi kèm dấu vân tay: app so ngay trong config.js (file tĩnh, không tính hạn
-          // mức Workers) nên khỏi phải gọi HEAD tới /media/ mỗi tiếng. Không có nó thì
-          // 500 máy × 24 giờ × 2 video = 24.000 lượt gọi hàm mỗi ngày chỉ để hỏi
-          // "có gì mới không" mà gần như luôn là không.
-          document.getElementById(id + '-tag').value = v.etag || '';
-          markDirty(true);
-          toast('Đã điền. Nhớ bấm Lưu để các máy nhận.', 'info');
-        };
-        row.appendChild(b);
+      // Mỗi file thuộc ĐÚNG MỘT chiều — tích Dọc thì tự nhả khỏi Ngang và ngược lại.
+      // Bỏ tích cả hai = gỡ khỏi playlist (file vẫn nằm trong kho).
+      // Một chiều thì chứa được nhiều file, xếp thứ tự ở khối "Playlist Offline".
+      const cur = offlineSlotOf(v.name);
+      for (const [text, slot] of [['Dọc', 'portrait'], ['Ngang', 'landscape']]) {
+        const wrap = document.createElement('label');
+        wrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = cur === slot;
+        cb.onchange = () => setOfflineSlot(v.name, v.etag, cb.checked ? slot : '');
+        wrap.appendChild(cb);
+        wrap.appendChild(document.createTextNode(text));
+        row.appendChild(wrap);
       }
       const del = document.createElement('button');
       del.className = 'btn btn-secondary btn-sm';
@@ -1445,6 +1704,8 @@ async function loadFromGitHub() {
     const content = data.content;
     playlists.landscape = parsePlaylist(content,'PLAYLIST_LANDSCAPE');
     playlists.portrait  = parsePlaylist(content,'PLAYLIST_PORTRAIT');
+    offlinePlaylists.landscape = parsePlaylist(content,'PLAYLIST_OFFLINE_LANDSCAPE');
+    offlinePlaylists.portrait  = parsePlaylist(content,'PLAYLIST_OFFLINE_PORTRAIT');
     const cfg = parseAppConfig(content);
     if (cfg) {
       document.getElementById('cfg-sync').value                = cfg.syncIntervalMinutes ?? 5;
@@ -1467,7 +1728,7 @@ async function loadFromGitHub() {
     campaignList = [...new Set([...(cfg?.campaigns || []), ...usedCamp])];
     renderCampaignChips();
     snapshotPlaylists = JSON.parse(JSON.stringify(playlists));
-    markDirty(false); render();
+    markDirty(false); render(); renderOffline();
     toast(`Tải xong: ${playlists.landscape.length} ngang + ${playlists.portrait.length} dọc`, 'success');
     loadChangelog();
     loadDevices();
