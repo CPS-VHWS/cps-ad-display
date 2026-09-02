@@ -1386,8 +1386,18 @@ async function apiFetch(resource, opts={}) {
     ...opts,
     headers: { Authorization:`Bearer ${key}`, 'Content-Type':'application/json', ...(opts.headers||{}) },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+  // Cùng lý do như uploadVideo: máy chủ trả HTML thì res.json() vỡ ngay và giấu mất
+  // mã lỗi thật, người dùng chỉ thấy "Unexpected token '<'".
+  const raw = await res.text();
+  let data = null;
+  try { data = JSON.parse(raw); } catch (_) {}
+  if (!res.ok || !data) {
+    throw new Error(
+      (data && data.message) ||
+      `Máy chủ trả HTTP ${res.status}${res.statusText ? ' ' + res.statusText : ''}` +
+      (raw ? ` — ${raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}` : '')
+    );
+  }
   return data;
 }
 
@@ -1420,8 +1430,21 @@ async function uploadVideo() {
       headers: { Authorization: `Bearer ${adminKey()}` },
       body: file,
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    // Đọc dạng chữ trước rồi mới thử hiểu là JSON.
+    //
+    // Gọi thẳng res.json() thì khi máy chủ trả về trang HTML (Cloudflare quá giờ,
+    // tệp quá lớn, lỗi hạ tầng...) nó vỡ ngay với thông báo "Unexpected token '<'"
+    // — che mất mã lỗi thật, người dùng không biết đường nào mà lần.
+    const raw = await res.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch (_) {}
+    if (!res.ok || !data) {
+      throw new Error(
+        (data && data.message) ||
+        `Máy chủ trả HTTP ${res.status}${res.statusText ? ' ' + res.statusText : ''}` +
+        (raw ? ` — ${raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}` : '')
+      );
+    }
     prog.textContent = `✅ Xong: ${data.name} (${(data.size / 1048576).toFixed(1)} MB) → ${data.url}`;
     toast('Tải video lên xong.', 'success');
     listVideos();
