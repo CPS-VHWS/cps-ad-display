@@ -40,7 +40,7 @@ const APP_CONFIG = {
   letterboxColor: '#df092d',
   offlineResetMinutes: 5,
   sourceMode: 'offline',
-  sourceModeStamp: 1788361552769,
+  sourceModeStamp: 1788367179317,
   offlineVideoPortrait: 'media/Dt_Update.mp4',
   offlineVideoLandscape: 'media/Laptop.mp4',
   offlineVideoPortraitTag: '"be51b13412e21edcbaf4f3956a49a720"',
