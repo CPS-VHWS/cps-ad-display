@@ -31,6 +31,7 @@ export async function onRequestPost({ request, env }) {
       appVersion: body.appVersion ? String(body.appVersion).slice(0, 16) : null,
       deviceModel: body.deviceModel ? String(body.deviceModel).slice(0, 48) : null,
       lastError: body.lastError ? String(body.lastError).slice(0, 32) : null,
+      videoTag: body.videoTag ? String(body.videoTag).slice(0, 24) : null,
       lastSeen: Date.now(),
     };
     await env.HEARTBEAT_KV.put(KEY_PREFIX + id, '', { expirationTtl: TTL_SECONDS, metadata: meta });

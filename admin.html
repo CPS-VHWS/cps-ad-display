@@ -342,6 +342,10 @@
       <div class="field"><label>Video offline — màn ngang</label>
         <input id="cfg-video-landscape" type="text" placeholder="videos/offline-landscape-v1.mp4" oninput="markDirty(true)"></div>
     </div>
+    <!-- Dấu vân tay file, ghi kèm vào config để app khỏi phải hỏi HEAD mỗi tiếng.
+         Ẩn đi vì không ai cần gõ tay — nút "Dùng cho Dọc/Ngang" tự điền. -->
+    <input id="cfg-video-portrait-tag" type="hidden">
+    <input id="cfg-video-landscape-tag" type="hidden">
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">Video offline: app tự tải về máy và phát khi mất mạng. <b>Đổi video thì đặt tên file MỚI</b> (vd đổi -v1 thành -v2) rồi sửa ô này — máy so tên và dấu vân tay file để biết có bản mới. Để trống thì máy dùng video nhúng sẵn trong app. Chỉ nhận đường dẫn trên chính tên miền này.</div>
 
     <!-- Upload video thẳng lên R2 -->
@@ -1225,6 +1229,8 @@ function buildConfigJs() {
     ? Math.max(Date.now(), loadedSourceStamp + 1) : loadedSourceStamp;
   const vidPortrait    = document.getElementById('cfg-video-portrait').value.trim();
   const vidLandscape   = document.getElementById('cfg-video-landscape').value.trim();
+  const vidPortraitTag = document.getElementById('cfg-video-portrait-tag').value.trim();
+  const vidLandscapeTag= document.getElementById('cfg-video-landscape-tag').value.trim();
   const campList       = campaignList;
   const owner      = document.getElementById('gh-owner').value.trim();
   const repo       = document.getElementById('gh-repo').value.trim();
@@ -1272,6 +1278,8 @@ const APP_CONFIG = {
   sourceModeStamp: ${srcStamp},
   offlineVideoPortrait: '${esc(vidPortrait)}',
   offlineVideoLandscape: '${esc(vidLandscape)}',
+  offlineVideoPortraitTag: '${esc(vidPortraitTag)}',
+  offlineVideoLandscapeTag: '${esc(vidLandscapeTag)}',
   campaigns: [${campList.map(c=>`'${esc(c)}'`).join(', ')}],
 };
 `;
@@ -1374,6 +1382,11 @@ async function listVideos() {
         b.onclick = () => {
           // Bỏ dấu / đầu: ô cấu hình dùng đường dẫn tương đối, app tự ghép tên miền
           document.getElementById(id).value = v.url.replace(/^\//, '');
+          // Ghi kèm dấu vân tay: app so ngay trong config.js (file tĩnh, không tính hạn
+          // mức Workers) nên khỏi phải gọi HEAD tới /media/ mỗi tiếng. Không có nó thì
+          // 500 máy × 24 giờ × 2 video = 24.000 lượt gọi hàm mỗi ngày chỉ để hỏi
+          // "có gì mới không" mà gần như luôn là không.
+          document.getElementById(id + '-tag').value = v.etag || '';
           markDirty(true);
           toast('Đã điền. Nhớ bấm Lưu để các máy nhận.', 'info');
         };
@@ -1406,6 +1419,8 @@ async function loadFromGitHub() {
       document.getElementById('cfg-source').value              = loadedSourceMode;
       document.getElementById('cfg-video-portrait').value      = cfg.offlineVideoPortrait || '';
       document.getElementById('cfg-video-landscape').value     = cfg.offlineVideoLandscape || '';
+      document.getElementById('cfg-video-portrait-tag').value  = cfg.offlineVideoPortraitTag || '';
+      document.getElementById('cfg-video-landscape-tag').value = cfg.offlineVideoLandscapeTag || '';
     }
     // Gộp cả campaign đang được video sử dụng: config cũ có thể chứa tag không
     // nằm trong APP_CONFIG.campaigns — nếu bỏ qua, card sẽ hiện "Luôn chạy" trong
@@ -1573,6 +1588,18 @@ async function loadDevices() {
   } catch(e) { countEl.textContent = '—'; listEl.innerHTML = `<span style="color:var(--danger);">Lỗi: ${escHtml(e.message)}</span>`; }
 }
 
+/**
+ * Tô đỏ máy chưa tải được video offline.
+ *
+ * Máy báo về dạng "<dọc>-<ngang>", mỗi vế là 6 ký tự đầu dấu vân tay file, "0" nghĩa là
+ * chưa có. Nhìn cột này là biết máy nào còn ôm video cũ sau khi đổi video, và máy nào
+ * tải hỏng — trước đây tải hỏng thì không ai hay.
+ */
+function videoTagStyle(tag) {
+  if (!tag) return 'color:var(--muted);';
+  return /(^|-)0(-|$)/.test(tag) ? 'color:var(--danger);' : 'color:var(--muted);';
+}
+
 function renderDeviceList() {
   const listEl = document.getElementById('device-list');
   const filter = document.getElementById('device-shop-filter').value;
@@ -1580,7 +1607,7 @@ function renderDeviceList() {
   if (!_devicesCache.length) { listEl.innerHTML = 'Chưa có máy nào báo cáo — chờ máy tự reload lần tới (tối đa ~1 giờ sau khi deploy code mới).'; return; }
   if (!devices.length) { listEl.innerHTML = 'Không có máy nào khớp bộ lọc.'; return; }
     listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Shop</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Thiết bị</th><th style="padding:4px 6px;">Bản app</th><th style="padding:4px 6px;">Lỗi gần nhất</th><th style="padding:4px 6px;">Lần cuối</th></tr>
+      <tr style="color:var(--muted);text-align:left;"><th style="padding:4px 6px;">Chế độ</th><th style="padding:4px 6px;">Shop</th><th style="padding:4px 6px;">Khu vực</th><th style="padding:4px 6px;">Chương trình</th><th style="padding:4px 6px;">Thiết bị</th><th style="padding:4px 6px;">Bản app</th><th style="padding:4px 6px;" title="Dấu vân tay video offline máy đang giữ, dạng Dọc-Ngang. 0 = chưa tải được.">Video</th><th style="padding:4px 6px;">Lỗi gần nhất</th><th style="padding:4px 6px;">Lần cuối</th></tr>
       ${devices.map(d => `<tr style="border-top:1px solid var(--border);">
         <td style="padding:4px 6px;">${d.mode === 'portrait' ? '▮ Dọc' : '▬ Ngang'}</td>
         <td style="padding:4px 6px;">${escHtml(d.shopName || '—')}</td>
@@ -1588,6 +1615,7 @@ function renderDeviceList() {
         <td style="padding:4px 6px;">${escHtml(d.campaign || 'luôn chạy')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${escHtml(d.deviceModel || '—')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${escHtml(d.appVersion || '—')}</td>
+        <td style="padding:4px 6px;${videoTagStyle(d.videoTag)}">${escHtml(d.videoTag || '—')}</td>
         <td style="padding:4px 6px;${d.lastError ? 'color:var(--danger);' : 'color:var(--muted);'}">${escHtml(d.lastError || '—')}</td>
         <td style="padding:4px 6px;color:var(--muted);">${timeAgo(d.lastSeen)}</td>
       </tr>`).join('')}

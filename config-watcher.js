@@ -56,6 +56,11 @@ function startHeartbeat(info) {
   const modelMatch = navigator.userAgent.match(/CPSDisplayModel\/([\w.-]+)/);
   const deviceModel = modelMatch ? modelMatch[1].replace(/_/g, ' ') : null;
 
+  // Dấu vân tay video offline máy đang giữ, dạng "<dọc>-<ngang>" ("0" = chưa tải được).
+  // Đi ké User-Agent như hai cái trên nên không tốn thêm lượt gọi mạng nào.
+  const vidMatch = navigator.userAgent.match(/CPSVideo\/([\w-]+)/);
+  const videoTag = vidMatch ? vidMatch[1] : null;
+
   // Lỗi gần nhất (nếu có) trong phiên hiện tại — chỉ báo nếu xảy ra trong 1 giờ gần đây,
   // tránh báo lỗi cũ đã tự phục hồi từ lâu.
   const err = window._lastError;
@@ -66,7 +71,7 @@ function startHeartbeat(info) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       id, mode: info.mode, region: info.region || null, campaign: info.campaign || null,
-      shopName: info.shop || null, appVersion, deviceModel, lastError,
+      shopName: info.shop || null, appVersion, deviceModel, lastError, videoTag,
     }),
     keepalive: true,
   })

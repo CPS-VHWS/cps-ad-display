@@ -76,6 +76,9 @@ export async function onRequestGet({ request, env }) {
         size: o.size,
         uploaded: o.uploaded,
         url: `/media/${o.key}`,
+        // Dùng httpEtag (có dấu nháy kép) chứ không phải etag trần: đây đúng là chuỗi
+        // mà HEAD trả về, app so bằng chuỗi nên hai bên phải giống hệt nhau.
+        etag: o.httpEtag,
       })),
     });
   } catch (e) {
