@@ -23,8 +23,8 @@ const PLAYLIST_OFFLINE_LANDSCAPE = [
 ];
 
 const PLAYLIST_OFFLINE_PORTRAIT = [
-  { file: 'DT.mp4', tag: '"0e98b3d1d5ed9b8e06e866ee424eb005"', label: 'DT' },
-  { file: 'Dt_Update.mp4', tag: '"be51b13412e21edcbaf4f3956a49a720"', label: 'Dt_Update' }
+  { file: 'Dt_Update.mp4', tag: '"be51b13412e21edcbaf4f3956a49a720"', label: 'Dt_Update' },
+  { file: 'DT.mp4', tag: '"0e98b3d1d5ed9b8e06e866ee424eb005"', label: 'DT' }
 ];
 
 const APP_CONFIG = {
