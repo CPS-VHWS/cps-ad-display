@@ -43,5 +43,5 @@ const APP_CONFIG = {
   offlineVideoLandscape: 'media/Laptop.mp4',
   offlineVideoPortraitTag: '"be51b13412e21edcbaf4f3956a49a720"',
   offlineVideoLandscapeTag: '',
-  campaigns: ['scamp', 'trade', 'quockhanh'],
+  campaigns: ['scamp', 'trade', 'quockhanh', 'off'],
 };
