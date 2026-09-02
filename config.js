@@ -13,7 +13,10 @@ const PLAYLIST_LANDSCAPE = [
 
 const PLAYLIST_PORTRAIT = [
   { id: 'YpV8qvzXvcU', duration: 41, label: 'SCamp 2026', campaign: 'scamp' },
-  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'trade', aspect: '9:16' }
+  { id: 'k4n3KK0862g', duration: 15, label: 'Video Camp 2/9', campaign: 'off', aspect: '9:16' },
+  { id: '-9d37qCzhAs', duration: 30, label: 'LÊN ĐỜI SMARTPHONE', campaign: 'trade' },
+  { id: 'Djl36n4AdLw', duration: 37, label: 'MUA LAPTOP TẶNG BALO', campaign: 'trade' },
+  { id: 'MFLGVWh3R4k', duration: 35, label: 'TRANG BỊ "TẬN RĂNG" CHO NĂM HỌC MỚI' }
 ];
 
 // ── Playlist OFFLINE: file trong kho R2, máy tải sẵn về để phát khi mất mạng ──
