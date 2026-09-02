@@ -1440,6 +1440,34 @@ function switchOfflineTab(tab) {
   renderOffline();
 }
 
+/** Mục playlist ứng với file này, ở bất kỳ chiều nào. */
+function offlineItemOf(file) {
+  for (const t of ['portrait', 'landscape']) {
+    const it = offlinePlaylists[t].find(v => v.file === file);
+    if (it) return it;
+  }
+  return null;
+}
+
+/**
+ * Sửa campaign/khu vực theo TÊN FILE thay vì theo vị trí trong danh sách.
+ *
+ * Khu tải video xếp theo tên file, khối Playlist Offline xếp theo thứ tự phát —
+ * hai thứ tự khác nhau, nên sửa theo vị trí là sửa nhầm mục.
+ */
+function updateOfflineByFile(file, field, value) {
+  const it = offlineItemOf(file);
+  if (!it) return;
+  if (field === 'regions') {
+    it.regions = (value && value.length === 2) ? undefined : value;
+  } else {
+    it[field] = value;
+  }
+  markDirty(true);
+  renderOffline();
+  listVideos();
+}
+
 /** Video này đang nằm ở chiều nào — dùng để tích sẵn ô trong danh sách kho. */
 function offlineSlotOf(file) {
   if (offlinePlaylists.portrait.some(v => v.file === file)) return 'portrait';
@@ -1683,6 +1711,45 @@ async function listVideos() {
         wrap.appendChild(document.createTextNode(text));
         row.appendChild(wrap);
       }
+      // Miền + chương trình ngay tại dòng này, khỏi phải cuộn lên khối Playlist Offline
+      // để đặt cho từng video. Chỉ hiện khi file đã được gán vào một chiều — chưa gán
+      // thì nó không nằm trong playlist nào, đặt cũng chẳng lưu vào đâu.
+      const it = offlineItemOf(v.name);
+      if (it) {
+        const box = document.createElement('span');
+        box.style.cssText = 'display:inline-flex;align-items:center;gap:8px;font-size:12px;';
+        const mn = it.regions === undefined || it.regions.includes('mn');
+        const mb = it.regions === undefined || it.regions.includes('mb');
+        const mkReg = (text, key, on) => {
+          const l = document.createElement('label');
+          l.style.cssText = 'display:inline-flex;align-items:center;gap:3px;cursor:pointer;';
+          const c = document.createElement('input');
+          c.type = 'checkbox'; c.checked = on;
+          c.onchange = () => {
+            const cur = offlineItemOf(v.name);
+            const now = cur.regions === undefined ? ['mn', 'mb'] : [...cur.regions];
+            const next = c.checked ? [...new Set([...now, key])] : now.filter(r => r !== key);
+            updateOfflineByFile(v.name, 'regions', next);
+          };
+          l.appendChild(c); l.appendChild(document.createTextNode(text));
+          return l;
+        };
+        box.appendChild(mkReg('MN', 'mn', mn));
+        box.appendChild(mkReg('MB', 'mb', mb));
+        if (it.regions && it.regions.length === 0) {
+          const w = document.createElement('span');
+          w.className = 'region-none'; w.textContent = '⚠ Không chạy ở đâu';
+          box.appendChild(w);
+        }
+        const sel = document.createElement('select');
+        sel.style.cssText = 'font-size:12px;width:auto;padding:4px 8px;';
+        sel.innerHTML = `<option value="">— Luôn chạy</option>` +
+          getCampaignList().map(c => `<option value="${escHtml(c)}"${it.campaign === c ? ' selected' : ''}>${escHtml(c)}</option>`).join('');
+        sel.onchange = () => updateOfflineByFile(v.name, 'campaign', sel.value);
+        box.appendChild(sel);
+        row.appendChild(box);
+      }
+
       const del = document.createElement('button');
       del.className = 'btn btn-secondary btn-sm';
       del.textContent = 'Xoá';
