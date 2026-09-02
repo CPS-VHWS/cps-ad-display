@@ -1361,6 +1361,38 @@ async function uploadVideo() {
   }
 }
 
+/**
+ * Xoá video khỏi kho R2. Xoá là mất hẳn, không khôi phục được.
+ *
+ * Chặn hai trường hợp dễ gây hoạ:
+ * 1. Xoá đúng file mà config đang trỏ tới — máy chưa kịp tải sẽ không còn gì để tải,
+ *    và máy mới cài thì không bao giờ có video offline.
+ * 2. Xoá nhầm do bấm vội — bắt xác nhận, có nêu rõ tên file.
+ */
+async function deleteVideo(name) {
+  const inUse = ['cfg-video-portrait', 'cfg-video-landscape']
+    .map(id => document.getElementById(id).value.trim().replace(/^\//, ''))
+    .filter(v => v && v.endsWith('/' + name));
+  if (inUse.length) {
+    toast(`Không xoá được: config đang trỏ tới "${name}". Đổi sang video khác và bấm Lưu trước đã.`, 'error');
+    return;
+  }
+  if (!confirm(
+    `Xoá vĩnh viễn "${name}" khỏi kho?\n\n` +
+    `Máy đã tải file này về rồi thì vẫn phát bình thường (chúng giữ bản sao riêng).\n` +
+    `Nhưng máy CHƯA tải kịp sẽ không còn gì để tải.\n\n` +
+    `Nên xem cột "Video" ở bảng Máy hoạt động trước: mọi máy đã mang dấu vân tay của\n` +
+    `video MỚI thì xoá mới an toàn.`
+  )) return;
+  try {
+    await apiFetch(`video?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    toast(`Đã xoá ${name}.`, 'success');
+    listVideos();
+  } catch (e) {
+    toast('Lỗi: ' + e.message, 'error');
+  }
+}
+
 async function listVideos() {
   const el = document.getElementById('vid-list');
   el.textContent = 'Đang tải danh sách…';
@@ -1392,6 +1424,12 @@ async function listVideos() {
         };
         row.appendChild(b);
       }
+      const del = document.createElement('button');
+      del.className = 'btn btn-secondary btn-sm';
+      del.textContent = 'Xoá';
+      del.style.cssText = 'color:var(--danger);border-color:var(--danger);';
+      del.onclick = () => deleteVideo(v.name);
+      row.appendChild(del);
       el.appendChild(row);
     }
   } catch (e) {
