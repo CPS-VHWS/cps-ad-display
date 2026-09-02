@@ -19,10 +19,9 @@ const PLAYLIST_PORTRAIT = [
 // ── Playlist OFFLINE: file trong kho R2, máy tải sẵn về để phát khi mất mạng ──
 // Phát lần lượt theo đúng thứ tự dưới đây; tới mốc reset thì mọi máy quay về mục đầu.
 const PLAYLIST_OFFLINE_LANDSCAPE = [
-  { file: 'Laptop.mp4', tag: '"3deb9d6dba8d74462eee223501c4fead"', label: 'Laptop', regions: [], campaigns: ['quockhanh'] },
-  { file: 'Phu_kien_master_ngang_fix.mp4', tag: '"7d4b8bff07bdb5e017507dec514bd317"', label: 'Phu_kien_master_ngang_fix', campaigns: ['trade'] },
-  { file: 'Laptop_Ngang_Master_fix.mp4', tag: '"5f4a4c3c4fdf0b497d3ae79decb8b9c7"', label: 'Laptop_Ngang_Master_fix', campaigns: ['trade'] },
-  { file: 'Dien_thoai_master_fix.mp4', tag: '"ee8c363724c7f771940cfa17d0db48df"', label: 'Dien_thoai_master_fix', campaigns: ['trade'] }
+  { file: 'Phu_kien_master_ngang_fix.mp4', tag: '"7d4b8bff07bdb5e017507dec514bd317"', label: 'Phu_kien_ngang', campaigns: ['trade'] },
+  { file: 'Laptop_Ngang_Master_fix.mp4', tag: '"5f4a4c3c4fdf0b497d3ae79decb8b9c7"', label: 'Laptop_ngang', campaigns: ['trade'] },
+  { file: 'Dien_thoai_master_fix.mp4', tag: '"ee8c363724c7f771940cfa17d0db48df"', label: 'Dien_thoai_ngang', campaigns: ['trade'] }
 ];
 
 const PLAYLIST_OFFLINE_PORTRAIT = [
